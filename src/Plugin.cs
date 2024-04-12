@@ -14,7 +14,7 @@ using Random = UnityEngine.Random;
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 #pragma warning restore CS0618
 
-namespace TestMod;
+namespace OracleRooms;
 
 [BepInPlugin("alduris.oraclerooms", "Iterator Room Randomizer", "1.0")]
 sealed class Plugin : BaseUnityPlugin
