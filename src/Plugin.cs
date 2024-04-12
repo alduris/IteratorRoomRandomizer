@@ -33,36 +33,57 @@ sealed class Plugin : BaseUnityPlugin
         if (init) return;
         init = true;
 
-        On.OverWorld.ctor += OverWorld_ctor;
-        IL.Room.ReadyForAI += Room_ReadyForAI;
-        IL.Oracle.ctor += Oracle_ctor;
-        On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
-        IL.PebblesPearl.Update += PebblesPearl_Update;
-        IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
-        IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+        try
+        {
+            On.OverWorld.ctor += OverWorld_ctor;
+            IL.Room.ReadyForAI += Room_ReadyForAI;
+            IL.Oracle.ctor += Oracle_ctor;
+            On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
+            IL.PebblesPearl.Update += PebblesPearl_Update;
+            IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
+            IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+            Logger.LogDebug("Finished applying hooks :)");
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e);
+        }
     }
 
     private void SLOracleBehaviorNoMark_Update(ILContext il)
     {
-        // Stops a crash when meeting Moon for the first time with the mark
+        // Stops a crash when meeting Moon without the mark
         var c = new ILCursor(il);
 
-        while (c.TryGotoNext(x => x.MatchCallvirt<World>(nameof(World.GetAbstractRoom))))
+        while (true)
         {
-            c.Emit(OpCodes.Ldarg_0);
-            c.EmitDelegate((string room, SLOracleBehaviorNoMark self) =>
+            if (c.TryGotoNext(x => x.MatchLdstr(out _), x => x.MatchCallOrCallvirt<World>(nameof(World.GetAbstractRoom))))
             {
-                var name = self.oracle.room.abstractRoom.name;
-                if (name.ToLower().StartsWith("sl"))
+                // Loading via string
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((string room, SLOracleBehaviorNoMark self) =>
                 {
-                    return room;
-                }
-                else
-                {
-                    return name;
-                }
-            });
-            c.Index++;
+                    var name = self.oracle.room.abstractRoom.name;
+                    if (name.ToLower().StartsWith("sl"))
+                    {
+                        return room;
+                    }
+                    else
+                    {
+                        return name;
+                    }
+                });
+                c.Index++;
+            }
+            else if (c.TryGotoNext(x => x.MatchCallOrCallvirt<World>(nameof(World.GetAbstractRoom))))
+            {
+                // Do nothing if it's a different overload
+                c.Index++;
+            }
+            else
+            {
+                break;
+            }
         }
     }
 
