@@ -35,13 +35,13 @@ sealed class Plugin : BaseUnityPlugin
 
         try
         {
-            On.OverWorld.ctor += OverWorld_ctor;
             IL.Room.ReadyForAI += Room_ReadyForAI;
             IL.Oracle.ctor += Oracle_ctor;
             On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
             IL.PebblesPearl.Update += PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+            On.OverWorld.ctor += OverWorld_ctor; // apply this one last so that no rooms get assigned if anything fails
             Logger.LogDebug("Finished applying hooks :)");
         }
         catch (Exception e)
@@ -55,36 +55,24 @@ sealed class Plugin : BaseUnityPlugin
         // Stops a crash when meeting Moon without the mark
         var c = new ILCursor(il);
 
-        while (true)
+        // SL_AI doesn't exist outside of shoreline
+        c.GotoNext(MoveType.After, x => x.MatchLdstr("SL_AI"), x => x.MatchCall<string>("op_Inequality"));
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((SLOracleBehaviorNoMark self) =>
         {
-            if (c.TryGotoNext(x => x.MatchLdstr(out _), x => x.MatchCallOrCallvirt<World>(nameof(World.GetAbstractRoom))))
-            {
-                // Loading via string
-                c.Emit(OpCodes.Ldarg_0);
-                c.EmitDelegate((string room, SLOracleBehaviorNoMark self) =>
-                {
-                    var name = self.oracle.room.abstractRoom.name;
-                    if (name.ToLower().StartsWith("sl"))
-                    {
-                        return room;
-                    }
-                    else
-                    {
-                        return name;
-                    }
-                });
-                c.Index++;
-            }
-            else if (c.TryGotoNext(x => x.MatchCallOrCallvirt<World>(nameof(World.GetAbstractRoom))))
-            {
-                // Do nothing if it's a different overload
-                c.Index++;
-            }
-            else
-            {
-                break;
-            }
-        }
+            return self.lockedOverseer.parent.Room.name.ToUpperInvariant().StartsWith("SL");
+        });
+        c.Emit(OpCodes.And);
+
+        // SL_A15 also doesn't exist outside of shoreline
+        ILLabel brTo = null;
+        c.GotoNext(MoveType.Before, x => x.MatchLdarg(0), x => x.MatchLdfld<SLOracleBehaviorNoMark>(nameof(SLOracleBehaviorNoMark.lockedOverseer)), x => x.MatchBrtrue(out brTo));
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((SLOracleBehaviorNoMark self) =>
+        {
+            return self.oracle.room.abstractRoom.name.ToUpperInvariant().StartsWith("SL");
+        });
+        c.Emit(OpCodes.Brfalse, brTo);
     }
 
     private void SSOracleMeetWhite_Update(ILContext il)
@@ -195,10 +183,12 @@ sealed class Plugin : BaseUnityPlugin
 
                 // Get a random room in a story region (so that we can actually access the iterator)
                 string room;
+                int i = 0;
                 do
                 {
                     room = roomList[Random.Range(0, roomList.Length)];
-                } while (SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Contains(room.Split(['_'], 1)[0]));
+                }
+                while (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())));
                 rooms[room] = new Oracle.OracleID(oracle, false);
 
                 // Log it for debugging purposes
