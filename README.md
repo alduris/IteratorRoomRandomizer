@@ -1,5 +1,4 @@
-Use this template on GitHub or just [download the code](https://github.com/alduris/TemplateMod/archive/refs/heads/master.zip), whichever is easiest.
+# Iterator Room Randomizer
+Randomizes the rooms iterators spawn in at the start of each cycle. This includes iterators that aren't normally available for that slugcat ;)
 
-Rename `src/TestMod.csproj`, then edit `mod/modinfo.json` and `src/Plugin.cs` to customize your mod.
-
-See [the modding wiki](https://rainworldmodding.miraheze.org/wiki/Downpour_Reference/Mod_Directories) for `modinfo.json` documentation.
+To download the mod, click on the releases panel on the sidebar to the right.
