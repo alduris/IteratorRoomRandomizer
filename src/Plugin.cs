@@ -286,14 +286,11 @@ sealed class Plugin : BaseUnityPlugin
     private static Vector2 RandomAccessiblePoint(Room room)
     {
         var entrances = new List<IntVector2>();
-        for (int i = 1; i < room.Width - 1; i++)
+        foreach (var shortcut in room.shortcuts)
         {
-            for (int j = 1; j < room.Height - 1; j++)
+            if (shortcut.shortCutType == ShortcutData.Type.RoomExit)
             {
-                if (room.Tiles[i, j].Terrain == Room.Tile.TerrainType.ShortcutEntrance)
-                {
-                    entrances.Add(new IntVector2(i, j));
-                }
+                entrances.Add(shortcut.StartTile);
             }
         }
         if (entrances.Count == 0)
