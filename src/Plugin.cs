@@ -7,6 +7,8 @@ using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MoreSlugcats;
+using RWCustom;
+using UnityEngine;
 using Random = UnityEngine.Random;
 
 // Allows access to private members
@@ -41,6 +43,7 @@ sealed class Plugin : BaseUnityPlugin
             IL.PebblesPearl.Update += PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+            IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
             On.OverWorld.ctor += OverWorld_ctor; // apply this one last so that no rooms get assigned if anything fails
             Logger.LogDebug("Finished applying hooks :)");
         }
@@ -48,6 +51,83 @@ sealed class Plugin : BaseUnityPlugin
         {
             Logger.LogError(e);
         }
+    }
+
+    private static readonly ConditionalWeakTable<SLOracleWakeUpProcedure, StrongBox<Vector2>> moonWakeupPosCWT = new();
+    private static Vector2 MoonWakeupPos(SLOracleWakeUpProcedure self) => moonWakeupPosCWT.GetValue(self, _ =>
+    {
+        var room = self.room;
+        var tilePos = room.GetTilePosition(new(1511f, 448f));
+
+        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
+        if (room.Width < tilePos.x || room.Height < tilePos.y || room.Tiles[tilePos.x, tilePos.y].Solid)
+        {
+            tilePos = room.GetTilePosition(self.SLOracle.bodyChunks[0].pos);
+            for (int i = 0; i < 100; i++)
+            {
+                var testPoint = room.GetTilePosition(RandomAccessiblePoint(room));
+                var qpc = new QuickPathFinder(testPoint, tilePos, room.aimap, flyTemplate);
+                while (qpc.status == 0)
+                {
+                    qpc.Update();
+                }
+                if (qpc.status != -1)
+                {
+                    tilePos = testPoint;
+                    break;
+                }
+            }
+            return new StrongBox<Vector2>(room.MiddleOfTile(tilePos));
+        }
+        return new StrongBox<Vector2>(new(1511, 448));
+    }).Value;
+
+    private void SLOracleWakeUpProcedure_Update(ILContext il)
+    {
+        // Fixes a number of things:
+        // 1. A big lagspike if water doesn't exist in the room (repeated errors yet somehow it manages to continue??)
+        // 2. Unhardcodes some positions to make it so the neuron can actually fly to where it's supposed to and moon to not teleport into another solid object
+
+        var c = new ILCursor(il);
+
+        // UNHARDCODE *SOME* POSITIONS
+        int loc = 0;
+        c.GotoNext(MoveType.After, x => x.MatchLdloca(out loc), x => x.MatchLdcR4(1511f), x => x.MatchLdcR4(448f), x => x.MatchCall<Vector2>(".ctor"));
+        c.Emit(OpCodes.Ldloc, loc);
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
+        {
+            if (itercwt.TryGetValue(self.room.game.overWorld, out var dict) && dict.Count > 0)
+            {
+                return MoonWakeupPos(self);
+            }
+            return orig;
+        });
+        c.Emit(OpCodes.Stloc, loc);
+
+        c.GotoNext(MoveType.After, x => x.MatchLdcR4(1511f), x => x.MatchLdcR4(448f), x => x.MatchNewobj<Vector2>());
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
+        {
+            if (itercwt.TryGetValue(self.room.game.overWorld, out var dict) && dict.Count > 0)
+            {
+                return MoonWakeupPos(self);
+            }
+            return orig;
+        });
+
+
+        // FIX BIG LAGSPIKE (do this by wrapping an if-statement that checks if self.room.waterObject is null and breaking around if true)
+        c.GotoNext(MoveType.After, x => x.MatchCallOrCallvirt<Water>(nameof(Water.GeneralUpsetSurface)));
+        var brTo = c.Next;
+
+        c.GotoPrev(MoveType.Before, x => x.MatchLdarg(0));
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((SLOracleWakeUpProcedure self) => self.room.waterObject is null);
+        c.Emit(OpCodes.Brtrue, brTo);
+
+
+        // UNHARDCODE 2 ELECTRIC BOOGALOO
     }
 
     private void SLOracleBehaviorNoMark_Update(ILContext il)
@@ -128,7 +208,8 @@ sealed class Plugin : BaseUnityPlugin
                 self.ID = d[self.room.abstractRoom.name];
 
                 //Set position to some random point in the room that isn't a solid
-                var pos = self.room.MiddleOfTile(self.room.Tiles.GetLength(0) / 2, self.room.Tiles.GetLength(1) / 2);
+                var pos = RandomAccessiblePoint(self.room);
+                /*var pos = self.room.MiddleOfTile(self.room.Tiles.GetLength(0) / 2, self.room.Tiles.GetLength(1) / 2);
                 for (int i = 0; i < (int)Math.Sqrt(self.room.Tiles.Length * 2); i++)
                 {
                     int x = Random.Range(1, self.room.Tiles.GetLength(0) - 1);
@@ -138,7 +219,7 @@ sealed class Plugin : BaseUnityPlugin
                         pos = self.room.MiddleOfTile(x, y);
                         break;
                     }
-                }
+                }*/
 
                 // Set all body chunks to this point
                 foreach (var chunk in self.bodyChunks)
@@ -188,13 +269,58 @@ sealed class Plugin : BaseUnityPlugin
                 {
                     room = roomList[Random.Range(0, roomList.Length)];
                 }
-                while (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())));
+                while (
+                    // No offscreen dens
+                    room.ToUpperInvariant().Contains("OFFSCREEN") ||
+                    // No non-story regions (though if we run out of options, just accept whatever we have)
+                    (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())))
+                );
                 rooms[room] = new Oracle.OracleID(oracle, false);
 
                 // Log it for debugging purposes
                 Logger.LogDebug(oracle + ": " + room);
             }
             itercwt.Add(self, rooms);
+        }
+    }
+    private static Vector2 RandomAccessiblePoint(Room room)
+    {
+        var entrances = new List<IntVector2>();
+        for (int i = 1; i < room.Width - 1; i++)
+        {
+            for (int j = 1; j < room.Height - 1; j++)
+            {
+                if (room.Tiles[i, j].Terrain == Room.Tile.TerrainType.ShortcutEntrance)
+                {
+                    entrances.Add(new IntVector2(i, j));
+                }
+            }
+        }
+        if (entrances.Count == 0)
+        {
+            throw new Exception("No entrances in room somehow");
+        }
+
+        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
+        while (true)
+        {
+            int x = Random.Range(1, room.Width - 1);
+            int y = Random.Range(1, room.Height - 1);
+            if (!room.Tiles[x, y].Solid)
+            {
+                for (int i = 0; i < entrances.Count; i++)
+                {
+                    var qpc = new QuickPathFinder(new IntVector2(x, y), entrances[i], room.aimap, flyTemplate);
+                    while (qpc.status == 0)
+                    {
+                        qpc.Update();
+                    }
+                    if (qpc.status != -1)
+                    {
+                        return room.MiddleOfTile(x, y);
+                    }
+                }
+            }
         }
     }
 }
