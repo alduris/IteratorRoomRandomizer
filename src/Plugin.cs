@@ -59,21 +59,15 @@ sealed class Plugin : BaseUnityPlugin
         var room = self.room;
         var tilePos = room.GetTilePosition(new(1511f, 448f));
 
-        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
         if (room.Width < tilePos.x || room.Height < tilePos.y || room.Tiles[tilePos.x, tilePos.y].Solid)
         {
             tilePos = room.GetTilePosition(self.SLOracle.bodyChunks[0].pos);
             for (int i = 0; i < 100; i++)
             {
-                var testPoint = room.GetTilePosition(RandomAccessiblePoint(room));
-                var qpc = new QuickPathFinder(testPoint, tilePos, room.aimap, flyTemplate);
-                while (qpc.status == 0)
+                var testPos = room.GetTilePosition(RandomAccessiblePoint(room));
+                if (CanPathfindToOracle(self, testPos))
                 {
-                    qpc.Update();
-                }
-                if (qpc.status != -1)
-                {
-                    tilePos = testPoint;
+                    tilePos = testPos;
                     break;
                 }
             }
@@ -81,6 +75,16 @@ sealed class Plugin : BaseUnityPlugin
         }
         return new StrongBox<Vector2>(new(1511, 448));
     }).Value;
+    private static bool CanPathfindToOracle(SLOracleWakeUpProcedure self, IntVector2 testPos)
+    {
+        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
+        var qpc = new QuickPathFinder(testPos, self.room.GetTilePosition(self.SLOracle.firstChunk.pos), self.room.aimap, flyTemplate);
+        while (qpc.status == 0)
+        {
+            qpc.Update();
+        }
+        return qpc.status != -1;
+    }
 
     private void SLOracleWakeUpProcedure_Update(ILContext il)
     {
@@ -90,7 +94,7 @@ sealed class Plugin : BaseUnityPlugin
 
         var c = new ILCursor(il);
 
-        // UNHARDCODE *SOME* POSITIONS
+        // UNHARDCODE *SOME* POSITIONS (all of the following are where the green neuron flies)
         int loc = 0;
         c.GotoNext(MoveType.After, x => x.MatchLdloca(out loc), x => x.MatchLdcR4(1511f), x => x.MatchLdcR4(448f), x => x.MatchCall<Vector2>(".ctor"));
         c.Emit(OpCodes.Ldloc, loc);
@@ -128,6 +132,64 @@ sealed class Plugin : BaseUnityPlugin
 
 
         // UNHARDCODE 2 ELECTRIC BOOGALOO
+        // Moon float to position
+        for (int i = 0; i < 3; i++)
+        {
+            c.GotoNext(MoveType.After, x => x.MatchLdcR4(1649f), x => x.MatchLdcR4(323f), x => x.MatchNewobj<Vector2>());
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
+            {
+                if (MoonWakeupPos(self) == new Vector2(1511f, 448f) && !self.room.GetTile(orig).Solid) return orig;
+                return MoonWakeupPos(self);
+            });
+        }
+
+        // Symbols
+        c.GotoNext(MoveType.After, x => x.MatchLdcR4(1653f), x => x.MatchLdcR4(450f), x => x.MatchNewobj<Vector2>());
+        c.Emit(OpCodes.Ldarg_0);
+        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
+        {
+            if (MoonWakeupPos(self) == new Vector2(1511f, 448f) && !self.room.GetTile(orig).Solid) return orig;
+            return self.room.MiddleOfTile(MoonWakeupPos(self) + new Vector2(0, 130f));
+        });
+
+        // Neuron tile spawn positions
+        for (int i = 0; i < 4; i++)
+        {
+            c.GotoNext(MoveType.After, x => x.MatchNewobj<IntVector2>());
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((IntVector2 orig, SLOracleWakeUpProcedure self) =>
+            {
+                var room = self.room;
+                var oraclePos = room.GetTilePosition(self.SLOracle.firstChunk.pos);
+                for (int i = 0; i < 30; i++)
+                {
+                    int offset = Random.Range(-10, 10);
+                    int x = oraclePos.x + offset;
+                    if (x < 0 || x >= room.TileWidth || room.GetTile(x, oraclePos.y).Solid || !CanPathfindToOracle(self, new IntVector2(x, oraclePos.y))) continue;
+
+                    int y = oraclePos.y;
+                    if (Random.value > 0.1f)
+                    {
+                        // Come from floor
+                        while (y > 0 && !room.GetTile(x, y).Solid)
+                        {
+                            y--;
+                        }
+                    }
+                    else
+                    {
+                        // Come from ceiling
+                        while (y < room.TileHeight - 1 && !room.GetTile(x, y).Solid)
+                        {
+                            y++;
+                        }
+                    }
+                    return new IntVector2(x, y);
+                }
+                return orig;
+            });
+        }
     }
 
     private void SLOracleBehaviorNoMark_Update(ILContext il)
@@ -288,7 +350,7 @@ sealed class Plugin : BaseUnityPlugin
         var entrances = new List<IntVector2>();
         foreach (var shortcut in room.shortcuts)
         {
-            if (shortcut.shortCutType == ShortcutData.Type.RoomExit)
+            if (shortcut.LeadingSomewhere)
             {
                 entrances.Add(shortcut.StartTile);
             }
@@ -299,15 +361,15 @@ sealed class Plugin : BaseUnityPlugin
         }
 
         var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
-        while (true)
+        for (int i = 0; i < room.Tiles.Length / 2; i++)
         {
             int x = Random.Range(1, room.Width - 1);
             int y = Random.Range(1, room.Height - 1);
             if (!room.Tiles[x, y].Solid)
             {
-                for (int i = 0; i < entrances.Count; i++)
+                for (int j = 0; j < entrances.Count; j++)
                 {
-                    var qpc = new QuickPathFinder(new IntVector2(x, y), entrances[i], room.aimap, flyTemplate);
+                    var qpc = new QuickPathFinder(new IntVector2(x, y), entrances[j], room.aimap, flyTemplate);
                     while (qpc.status == 0)
                     {
                         qpc.Update();
@@ -319,5 +381,6 @@ sealed class Plugin : BaseUnityPlugin
                 }
             }
         }
+        return new Vector2(room.PixelWidth / 2f, room.PixelHeight / 2f);
     }
 }
