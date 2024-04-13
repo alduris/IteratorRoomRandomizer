@@ -166,25 +166,55 @@ sealed class Plugin : BaseUnityPlugin
                 {
                     int offset = Random.Range(-10, 10);
                     int x = oraclePos.x + offset;
-                    if (x < 0 || x >= room.TileWidth || room.GetTile(x, oraclePos.y).Solid || !CanPathfindToOracle(self, new IntVector2(x, oraclePos.y))) continue;
+                    if (x < 0 || x >= room.TileWidth || room.GetTile(x, oraclePos.y).Solid) continue;
 
                     int y = oraclePos.y;
-                    if (Random.value > 0.1f)
+                    if (!CanPathfindToOracle(self, new IntVector2(x, oraclePos.y)))
                     {
-                        // Come from floor
-                        while (y > 0 && !room.GetTile(x, y).Solid)
+                        // We're in a solid tile, find an edge tile to spawn from (except this is somewhat expensive so we sometimes don't lol)
+                        if (Random.value < 0.6f) continue;
+
+                        while (y > 0 && (room.GetTile(x, y).Solid || !room.GetTile(x, y + 1).Solid || !CanPathfindToOracle(self, new IntVector2(x, y))))
                         {
                             y--;
+                        }
+                        if (y == 0)
+                        {
+                            while (y < room.TileHeight - 1 && (room.GetTile(x, y).Solid || !room.GetTile(x, y - 1).Solid || !CanPathfindToOracle(self, new IntVector2(x, y))))
+                            {
+                                y++;
+                            }
+                            if (y != room.TileHeight)
+                            {
+                                return new IntVector2(x, y);
+                            }
+                        }
+                        else
+                        {
+                            return new IntVector2(x, y);
                         }
                     }
                     else
                     {
-                        // Come from ceiling
-                        while (y < room.TileHeight - 1 && !room.GetTile(x, y).Solid)
+                        // We're in a non-solid tile, find a solid tile to spawn from
+                        if (Random.value > 0.1f)
                         {
-                            y++;
+                            // Come from floor
+                            while (y > 0 && !room.GetTile(x, y).Solid)
+                            {
+                                y--;
+                            }
+                        }
+                        else
+                        {
+                            // Come from ceiling
+                            while (y < room.TileHeight - 1 && !room.GetTile(x, y).Solid)
+                            {
+                                y++;
+                            }
                         }
                     }
+
                     return new IntVector2(x, y);
                 }
                 return orig;
