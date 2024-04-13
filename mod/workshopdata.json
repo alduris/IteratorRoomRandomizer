@@ -1,0 +1,17 @@
+{
+  "Title": "Iterator Room Randomizer",
+  "Description": "Randomizes the rooms iterators spawn in every cycle.",
+  "ID": "alduris.oraclerooms",
+  "Version": "1.0.1",
+  "TargetGameVersion": "v1.9.15b",
+  "Requirements": "",
+  "RequirementNames": "",
+  "Authors": "Alduris",
+  "Visibility": "Public",
+  "Tags": [
+    "Game Mechanics"
+  ],
+  "WorkshopID": 3219695348,
+  "UploadFilesOnly": true,
+  "UploadThumbnail": false
+}
