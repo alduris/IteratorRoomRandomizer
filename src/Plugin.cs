@@ -6,9 +6,6 @@ using System.Security.Permissions;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
-using MoreSlugcats;
-using RWCustom;
-using UnityEngine;
 using Random = UnityEngine.Random;
 
 // Allows access to private members
@@ -76,18 +73,7 @@ sealed partial class Plugin : BaseUnityPlugin
                 self.ID = d[self.room.abstractRoom.name];
 
                 //Set position to some random point in the room that isn't a solid
-                var pos = RandomAccessiblePoint(self.room);
-                /*var pos = self.room.MiddleOfTile(self.room.Tiles.GetLength(0) / 2, self.room.Tiles.GetLength(1) / 2);
-                for (int i = 0; i < (int)Math.Sqrt(self.room.Tiles.Length * 2); i++)
-                {
-                    int x = Random.Range(1, self.room.Tiles.GetLength(0) - 1);
-                    int y = Random.Range(1, self.room.Tiles.GetLength(1) - 1);
-                    if (!self.room.Tiles[x, y].Solid)
-                    {
-                        pos = self.room.MiddleOfTile(x, y);
-                        break;
-                    }
-                }*/
+                var pos = Util.RandomAccessiblePoint(self.room);
 
                 // Set all body chunks to this point
                 foreach (var chunk in self.bodyChunks)
@@ -151,42 +137,5 @@ sealed partial class Plugin : BaseUnityPlugin
             itercwt.Add(self, rooms);
         }
     }
-    private static Vector2 RandomAccessiblePoint(Room room)
-    {
-        var entrances = new List<IntVector2>();
-        foreach (var shortcut in room.shortcuts)
-        {
-            if (shortcut.LeadingSomewhere)
-            {
-                entrances.Add(shortcut.StartTile);
-            }
-        }
-        if (entrances.Count == 0)
-        {
-            throw new Exception("No entrances in room somehow");
-        }
 
-        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
-        for (int i = 0; i < room.Tiles.Length / 2; i++)
-        {
-            int x = Random.Range(1, room.Width - 1);
-            int y = Random.Range(1, room.Height - 1);
-            if (!room.Tiles[x, y].Solid)
-            {
-                for (int j = 0; j < entrances.Count; j++)
-                {
-                    var qpc = new QuickPathFinder(new IntVector2(x, y), entrances[j], room.aimap, flyTemplate);
-                    while (qpc.status == 0)
-                    {
-                        qpc.Update();
-                    }
-                    if (qpc.status != -1)
-                    {
-                        return room.MiddleOfTile(x, y);
-                    }
-                }
-            }
-        }
-        return new Vector2(room.PixelWidth / 2f, room.PixelHeight / 2f);
-    }
 }

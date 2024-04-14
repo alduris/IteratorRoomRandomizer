@@ -21,7 +21,7 @@ namespace OracleRooms
                 tilePos = room.GetTilePosition(self.SLOracle.bodyChunks[0].pos);
                 for (int i = 0; i < 100; i++)
                 {
-                    var testPos = room.GetTilePosition(RandomAccessiblePoint(room));
+                    var testPos = room.GetTilePosition(Util.RandomAccessiblePoint(room));
                     if (CanPathfindToMoon(self, testPos))
                     {
                         tilePos = testPos;
@@ -32,16 +32,9 @@ namespace OracleRooms
             }
             return new StrongBox<Vector2>(new(1511, 448));
         }).Value;
-        private static bool CanPathfindToMoon(SLOracleWakeUpProcedure self, IntVector2 testPos)
-        {
-            var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
-            var qpc = new QuickPathFinder(testPos, self.room.GetTilePosition(self.SLOracle.firstChunk.pos), self.room.aimap, flyTemplate);
-            while (qpc.status == 0)
-            {
-                qpc.Update();
-            }
-            return qpc.status != -1;
-        }
+
+        private static bool CanPathfindToMoon(SLOracleWakeUpProcedure self, IntVector2 testPos) =>
+            Util.PointsCanReach(testPos, self.room.GetTilePosition(self.SLOracle.firstChunk.pos), self.room);
 
         private void SLOracleWakeUpProcedure_Update(ILContext il)
         {
@@ -123,13 +116,12 @@ namespace OracleRooms
                     {
                         int offset = Random.Range(-10, 10);
                         int x = oraclePos.x + offset;
-                        if (x < 0 || x >= room.TileWidth || room.GetTile(x, oraclePos.y).Solid) continue;
+                        if (x < 0 || x >= room.TileWidth) continue;
 
                         int y = oraclePos.y;
                         if (!CanPathfindToMoon(self, new IntVector2(x, oraclePos.y)))
                         {
-                            // We're in a solid tile, find an edge tile to spawn from (except this is somewhat expensive so we sometimes don't lol)
-                            if (Random.value < 0.6f) continue;
+                            // We can't pathfind to moon from here, find an edge tile to spawn from
 
                             while (y > 0 && (room.GetTile(x, y).Solid || !room.GetTile(x, y + 1).Solid || !CanPathfindToMoon(self, new IntVector2(x, y))))
                             {
