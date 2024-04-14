@@ -105,7 +105,7 @@ namespace OracleRooms
             {
                 if (tiles[x, y].Solid && !tiles[x + 1, y].Solid)
                 {
-                    down = x + 1;
+                    left = x + 1;
                 }
                 x--;
             }
