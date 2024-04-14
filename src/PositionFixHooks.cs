@@ -26,7 +26,7 @@ namespace OracleRooms
 
             // Set new arm positions
             var room = oracle.room;
-            var rect = Util.FarthestEdges(room.GetTilePosition(OraclePos(oracle)), room);
+            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(oracle)), room);
 
             int up = rect[0], down = rect[1], left = rect[2], right = rect[3];
             self.cornerPositions[0] = room.MiddleOfTile(new IntVector2(left, up));
