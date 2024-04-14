@@ -57,6 +57,8 @@ sealed partial class Plugin : BaseUnityPlugin
         }
     }
 
+    internal static readonly ConditionalWeakTable<OverWorld, Dictionary<string, Oracle.OracleID>> itercwt = new();
+
     private void Oracle_ctor(ILContext il)
     {
         var c = new ILCursor(il);
@@ -103,8 +105,6 @@ sealed partial class Plugin : BaseUnityPlugin
         c.EmitDelegate((Room self) => !itercwt.TryGetValue(self.game.overWorld, out var d) || d.ContainsKey(self.abstractRoom.name));
         c.Emit(OpCodes.And);
     }
-
-    private static readonly ConditionalWeakTable<OverWorld, Dictionary<string, Oracle.OracleID>> itercwt = new();
     private void OverWorld_ctor(On.OverWorld.orig_ctor orig, OverWorld self, RainWorldGame game)
     {
         orig(self, game);
