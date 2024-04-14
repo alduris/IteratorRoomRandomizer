@@ -51,5 +51,66 @@ namespace OracleRooms
             }
             return qpc.status == 1;
         }
+
+        /// <returns>[up, down, left, right]</returns>
+        public static int[] FarthestEdges(IntVector2 startPoint, Room room)
+        {
+            var tiles = room.Tiles;
+            int x, y;
+
+            // Up
+            var up = room.Height - 1;
+            x = startPoint.x;
+            y = startPoint.y + 1;
+            while (y < room.Height)
+            {
+                if (tiles[x, y].Solid && !tiles[x, y - 1].Solid)
+                {
+                    up = y - 1;
+                }
+                y++;
+            }
+
+            // Down
+            var down = 0;
+            x = startPoint.x;
+            y = startPoint.y - 1;
+            while (y >= 0)
+            {
+                if (tiles[x, y].Solid && !tiles[x, y + 1].Solid)
+                {
+                    down = y + 1;
+                }
+                y--;
+            }
+
+            // Right
+            var right = room.Width - 1;
+            x = startPoint.x + 1;
+            y = startPoint.y;
+            while (x < room.Width)
+            {
+                if (tiles[x, y].Solid && !tiles[x - 1, y].Solid)
+                {
+                    right = x - 1;
+                }
+                x++;
+            }
+
+            // Left
+            var left = 0;
+            x = startPoint.x - 1;
+            y = startPoint.y;
+            while (x >= 0)
+            {
+                if (tiles[x, y].Solid && !tiles[x + 1, y].Solid)
+                {
+                    down = x + 1;
+                }
+                x--;
+            }
+
+            return [up, down, left, right];
+        }
     }
 }

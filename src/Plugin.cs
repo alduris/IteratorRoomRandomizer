@@ -6,6 +6,8 @@ using System.Security.Permissions;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
+using MoreSlugcats;
 using Random = UnityEngine.Random;
 
 // Allows access to private members
@@ -43,8 +45,14 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
 
-            // Moon revive
+            // Bugfix and position unhardcoding for moon revive in Hunter
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
+
+            // General position unhardcoding fixes
+            On.Oracle.OracleArm.ctor += OracleArm_ctor;
+            _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), SLOracleBehavior_OracleGetToPos);
+            _ = new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
+            _ = new Hook(typeof(CLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
 
             // Apply this one last so no rooms get assigned if any previous hooks fail
             On.OverWorld.ctor += OverWorld_ctor;
@@ -75,7 +83,7 @@ sealed partial class Plugin : BaseUnityPlugin
                 self.ID = d[self.room.abstractRoom.name];
 
                 //Set position to some random point in the room that isn't a solid
-                var pos = Util.RandomAccessiblePoint(self.room);
+                var pos = OraclePos(self); // Util.RandomAccessiblePoint(self.room);
 
                 // Set all body chunks to this point
                 foreach (var chunk in self.bodyChunks)
@@ -105,6 +113,7 @@ sealed partial class Plugin : BaseUnityPlugin
         c.EmitDelegate((Room self) => !itercwt.TryGetValue(self.game.overWorld, out var d) || d.ContainsKey(self.abstractRoom.name));
         c.Emit(OpCodes.And);
     }
+
     private void OverWorld_ctor(On.OverWorld.orig_ctor orig, OverWorld self, RainWorldGame game)
     {
         orig(self, game);
