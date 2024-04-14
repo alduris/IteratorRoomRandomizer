@@ -19,7 +19,7 @@ using Random = UnityEngine.Random;
 namespace OracleRooms;
 
 [BepInPlugin("alduris.oraclerooms", "Iterator Room Randomizer", "1.0")]
-sealed class Plugin : BaseUnityPlugin
+sealed partial class Plugin : BaseUnityPlugin
 {
     bool init;
 
@@ -39,249 +39,25 @@ sealed class Plugin : BaseUnityPlugin
         {
             IL.Room.ReadyForAI += Room_ReadyForAI;
             IL.Oracle.ctor += Oracle_ctor;
+
+            // Misc fixes
             On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
             IL.PebblesPearl.Update += PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+
+            // Moon revive
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
-            On.OverWorld.ctor += OverWorld_ctor; // apply this one last so that no rooms get assigned if anything fails
+
+            // Apply this one last so no rooms get assigned if any previous hooks fail
+            On.OverWorld.ctor += OverWorld_ctor;
+
             Logger.LogDebug("Finished applying hooks :)");
         }
         catch (Exception e)
         {
             Logger.LogError(e);
         }
-    }
-
-    private static readonly ConditionalWeakTable<SLOracleWakeUpProcedure, StrongBox<Vector2>> moonWakeupPosCWT = new();
-    private static Vector2 MoonWakeupPos(SLOracleWakeUpProcedure self) => moonWakeupPosCWT.GetValue(self, _ =>
-    {
-        var room = self.room;
-        var tilePos = room.GetTilePosition(new(1511f, 448f));
-
-        if (room.Width < tilePos.x || room.Height < tilePos.y || room.Tiles[tilePos.x, tilePos.y].Solid)
-        {
-            tilePos = room.GetTilePosition(self.SLOracle.bodyChunks[0].pos);
-            for (int i = 0; i < 100; i++)
-            {
-                var testPos = room.GetTilePosition(RandomAccessiblePoint(room));
-                if (CanPathfindToOracle(self, testPos))
-                {
-                    tilePos = testPos;
-                    break;
-                }
-            }
-            return new StrongBox<Vector2>(room.MiddleOfTile(tilePos));
-        }
-        return new StrongBox<Vector2>(new(1511, 448));
-    }).Value;
-    private static bool CanPathfindToOracle(SLOracleWakeUpProcedure self, IntVector2 testPos)
-    {
-        var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);
-        var qpc = new QuickPathFinder(testPos, self.room.GetTilePosition(self.SLOracle.firstChunk.pos), self.room.aimap, flyTemplate);
-        while (qpc.status == 0)
-        {
-            qpc.Update();
-        }
-        return qpc.status != -1;
-    }
-
-    private void SLOracleWakeUpProcedure_Update(ILContext il)
-    {
-        // Fixes a number of things:
-        // 1. A big lagspike if water doesn't exist in the room (repeated errors yet somehow it manages to continue??)
-        // 2. Unhardcodes some positions to make it so the neuron can actually fly to where it's supposed to and moon to not teleport into another solid object
-
-        var c = new ILCursor(il);
-
-        // UNHARDCODE *SOME* POSITIONS (all of the following are where the green neuron flies)
-        int loc = 0;
-        c.GotoNext(MoveType.After, x => x.MatchLdloca(out loc), x => x.MatchLdcR4(1511f), x => x.MatchLdcR4(448f), x => x.MatchCall<Vector2>(".ctor"));
-        c.Emit(OpCodes.Ldloc, loc);
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
-        {
-            if (itercwt.TryGetValue(self.room.game.overWorld, out var dict) && dict.Count > 0)
-            {
-                return MoonWakeupPos(self);
-            }
-            return orig;
-        });
-        c.Emit(OpCodes.Stloc, loc);
-
-        c.GotoNext(MoveType.After, x => x.MatchLdcR4(1511f), x => x.MatchLdcR4(448f), x => x.MatchNewobj<Vector2>());
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
-        {
-            if (itercwt.TryGetValue(self.room.game.overWorld, out var dict) && dict.Count > 0)
-            {
-                return MoonWakeupPos(self);
-            }
-            return orig;
-        });
-
-
-        // FIX BIG LAGSPIKE (do this by wrapping an if-statement that checks if self.room.waterObject is null and breaking around if true)
-        c.GotoNext(MoveType.After, x => x.MatchCallOrCallvirt<Water>(nameof(Water.GeneralUpsetSurface)));
-        var brTo = c.Next;
-
-        c.GotoPrev(MoveType.Before, x => x.MatchLdarg(0));
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((SLOracleWakeUpProcedure self) => self.room.waterObject is null);
-        c.Emit(OpCodes.Brtrue, brTo);
-
-
-        // UNHARDCODE 2 ELECTRIC BOOGALOO
-        // Moon float to position
-        for (int i = 0; i < 3; i++)
-        {
-            c.GotoNext(MoveType.After, x => x.MatchLdcR4(1649f), x => x.MatchLdcR4(323f), x => x.MatchNewobj<Vector2>());
-            c.Emit(OpCodes.Ldarg_0);
-            c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
-            {
-                if (MoonWakeupPos(self) == new Vector2(1511f, 448f) && !self.room.GetTile(orig).Solid) return orig;
-                return MoonWakeupPos(self);
-            });
-        }
-
-        // Symbols
-        c.GotoNext(MoveType.After, x => x.MatchLdcR4(1653f), x => x.MatchLdcR4(450f), x => x.MatchNewobj<Vector2>());
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((Vector2 orig, SLOracleWakeUpProcedure self) =>
-        {
-            if (MoonWakeupPos(self) == new Vector2(1511f, 448f) && !self.room.GetTile(orig).Solid) return orig;
-            return self.room.MiddleOfTile(MoonWakeupPos(self) + new Vector2(0, 130f));
-        });
-
-        // Neuron tile spawn positions
-        for (int i = 0; i < 4; i++)
-        {
-            c.GotoNext(MoveType.After, x => x.MatchNewobj<IntVector2>());
-            c.Emit(OpCodes.Ldarg_0);
-            c.EmitDelegate((IntVector2 orig, SLOracleWakeUpProcedure self) =>
-            {
-                var room = self.room;
-                var oraclePos = room.GetTilePosition(self.SLOracle.firstChunk.pos);
-                for (int i = 0; i < 30; i++)
-                {
-                    int offset = Random.Range(-10, 10);
-                    int x = oraclePos.x + offset;
-                    if (x < 0 || x >= room.TileWidth || room.GetTile(x, oraclePos.y).Solid) continue;
-
-                    int y = oraclePos.y;
-                    if (!CanPathfindToOracle(self, new IntVector2(x, oraclePos.y)))
-                    {
-                        // We're in a solid tile, find an edge tile to spawn from (except this is somewhat expensive so we sometimes don't lol)
-                        if (Random.value < 0.6f) continue;
-
-                        while (y > 0 && (room.GetTile(x, y).Solid || !room.GetTile(x, y + 1).Solid || !CanPathfindToOracle(self, new IntVector2(x, y))))
-                        {
-                            y--;
-                        }
-                        if (y == 0)
-                        {
-                            while (y < room.TileHeight - 1 && (room.GetTile(x, y).Solid || !room.GetTile(x, y - 1).Solid || !CanPathfindToOracle(self, new IntVector2(x, y))))
-                            {
-                                y++;
-                            }
-                            if (y != room.TileHeight)
-                            {
-                                return new IntVector2(x, y);
-                            }
-                        }
-                        else
-                        {
-                            return new IntVector2(x, y);
-                        }
-                    }
-                    else
-                    {
-                        // We're in a non-solid tile, find a solid tile to spawn from
-                        if (Random.value > 0.1f)
-                        {
-                            // Come from floor
-                            while (y > 0 && !room.GetTile(x, y).Solid)
-                            {
-                                y--;
-                            }
-                        }
-                        else
-                        {
-                            // Come from ceiling
-                            while (y < room.TileHeight - 1 && !room.GetTile(x, y).Solid)
-                            {
-                                y++;
-                            }
-                        }
-                    }
-
-                    return new IntVector2(x, y);
-                }
-                return orig;
-            });
-        }
-    }
-
-    private void SLOracleBehaviorNoMark_Update(ILContext il)
-    {
-        // Stops a crash when meeting Moon without the mark
-        var c = new ILCursor(il);
-
-        // SL_AI doesn't exist outside of shoreline
-        c.GotoNext(MoveType.After, x => x.MatchLdstr("SL_AI"), x => x.MatchCall<string>("op_Inequality"));
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((SLOracleBehaviorNoMark self) =>
-        {
-            return self.lockedOverseer.parent.Room.name.ToUpperInvariant().StartsWith("SL");
-        });
-        c.Emit(OpCodes.And);
-
-        // SL_A15 also doesn't exist outside of shoreline
-        ILLabel brTo = null;
-        c.GotoNext(MoveType.Before, x => x.MatchLdarg(0), x => x.MatchLdfld<SLOracleBehaviorNoMark>(nameof(SLOracleBehaviorNoMark.lockedOverseer)), x => x.MatchBrtrue(out brTo));
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((SLOracleBehaviorNoMark self) =>
-        {
-            return self.oracle.room.abstractRoom.name.ToUpperInvariant().StartsWith("SL");
-        });
-        c.Emit(OpCodes.Brfalse, brTo);
-    }
-
-    private void SSOracleMeetWhite_Update(ILContext il)
-    {
-        // Fixes a crash for spearmaster moon
-        var c = new ILCursor(il);
-
-        while (c.TryGotoNext(x => x.MatchLdfld<PlayerGraphics>(nameof(PlayerGraphics.bodyPearl))))
-        {
-            c.GotoNext(MoveType.After, x => x.MatchStfld(out _));
-            var next = c.Next;
-            c.GotoPrev(x => x.MatchLdarg(0), x => x.MatchCall<SSOracleBehavior.SubBehavior>("get_player"));
-            c.Emit(OpCodes.Ldarg_0);
-            c.EmitDelegate((SSOracleBehavior.SSOracleMeetWhite self) => ModManager.MSC && self.player.slugcatStats.name == MoreSlugcatsEnums.SlugcatStatsName.Spear);
-            c.Emit(OpCodes.Brfalse, next);
-            c.GotoNext(x => x.MatchStfld(out _));
-        }
-    }
-
-    private void PebblesPearl_Update(ILContext il)
-    {
-        // Fixes a crash if iterator doesn't have a halo (aka Looks to the Moon)
-        var c = new ILCursor(il);
-
-        c.GotoNext(x => x.MatchLdfld<OracleGraphics>(nameof(OracleGraphics.halo)));
-        ILLabel brto = null;
-        c.GotoPrev(MoveType.After, x => x.MatchBrfalse(out brto));
-        c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((PebblesPearl self) => (self.orbitObj.graphicsModule as OracleGraphics).halo != null);
-        c.Emit(OpCodes.Brfalse, brto);
-    }
-
-    private void SSOracleBehavior_LockShortcuts(On.SSOracleBehavior.orig_LockShortcuts orig, SSOracleBehavior self)
-    {
-        // Stops Pebbles and Spear's LTTM from trapping us in the room while they whine about our repeated visits
-        orig(self);
-        self.UnlockShortcuts();
     }
 
     private void Oracle_ctor(ILContext il)
