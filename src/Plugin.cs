@@ -61,8 +61,8 @@ sealed partial class Plugin : BaseUnityPlugin
             _ = new Hook(
                 typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
                     nameof(SSOracleBehavior.SSSleepoverBehavior.holdPlayerPos),
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                .GetGetMethod(),
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetGetMethod(true),
                 SSSleepoverBehavior_holdPlayerPos);
 
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
