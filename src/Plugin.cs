@@ -45,6 +45,7 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.PebblesPearl.Update += PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
+            On.MoreSlugcats.SpearMasterPearl.NewRoom += SpearMasterPearl_NewRoom;
 
             // Bugfix and position unhardcoding for moon revive in Hunter
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;

@@ -1,4 +1,5 @@
-﻿using Mono.Cecil.Cil;
+﻿using CoralBrain;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MoreSlugcats;
 
@@ -6,6 +7,17 @@ namespace OracleRooms
 {
     partial class Plugin
     {
+        private void SpearMasterPearl_NewRoom(On.MoreSlugcats.SpearMasterPearl.orig_NewRoom orig, SpearMasterPearl self, Room newRoom)
+        {
+            // Fixes null ref crash when meeting Pebbles
+            orig(self, newRoom);
+            if (self.myCircle == null && itercwt.TryGetValue(newRoom.game.overWorld, out var rooms) && rooms.TryGetValue(newRoom.abstractRoom.name, out var iter) && iter == Oracle.OracleID.SS)
+            {
+                self.myCircle = new ProjectedCircle(newRoom, self, 0, 0f);
+                newRoom.AddObject(self.myCircle);
+            }
+        }
+
         private void SLOracleBehaviorNoMark_Update(ILContext il)
         {
             // Stops a crash when meeting Moon without the mark

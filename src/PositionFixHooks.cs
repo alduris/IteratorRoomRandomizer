@@ -44,11 +44,6 @@ namespace OracleRooms
         {
             return self.moonActive ? orig(self) : OraclePos(self.oracle);
         }
-        private bool SLOracleBehavior_InSitPosition(Func<SLOracleBehavior, bool> orig, SLOracleBehavior self)
-        {
-            var oracle = self.oracle;
-            return oracle.room.GetTilePosition(oracle.firstChunk.pos).x == oracle.room.GetTilePosition(OraclePos(oracle)).x && !self.moonActive;
-        }
 
 
         ///////////////////////////////////////////////////////////////////////
@@ -71,6 +66,12 @@ namespace OracleRooms
             var bl = room.MiddleOfTile(rect.left, rect.bottom);
             var tr = room.MiddleOfTile(rect.right, rect.top);
             return new Vector2(Mathf.Min(Mathf.Max(mediaPos.x, bl.x), tr.x), Mathf.Min(Mathf.Max(mediaPos.y, bl.y), tr.y));
+        }
+
+        private bool SLOracleBehavior_InSitPosition(Func<SLOracleBehavior, bool> orig, SLOracleBehavior self)
+        {
+            var oracle = self.oracle;
+            return oracle.room.GetTilePosition(oracle.firstChunk.pos).x == oracle.room.GetTilePosition(OraclePos(oracle)).x && !self.moonActive;
         }
 
 
