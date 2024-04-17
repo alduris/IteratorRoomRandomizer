@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
 using BepInEx;
@@ -50,9 +51,21 @@ sealed partial class Plugin : BaseUnityPlugin
 
             // General position unhardcoding fixes
             On.Oracle.OracleArm.ctor += OracleArm_ctor;
+            
             _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), SLOracleBehavior_OracleGetToPos);
             _ = new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
             _ = new Hook(typeof(CLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
+
+            _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition);
+
+            _ = new Hook(
+                typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
+                    nameof(SSOracleBehavior.SSSleepoverBehavior.holdPlayerPos),
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                .GetGetMethod(),
+                SSSleepoverBehavior_holdPlayerPos);
+
+            On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
             // Apply this one last so no rooms get assigned if any previous hooks fail
             On.OverWorld.ctor += OverWorld_ctor;

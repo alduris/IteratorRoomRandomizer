@@ -52,8 +52,7 @@ namespace OracleRooms
             return qpc.status == 1;
         }
 
-        /// <returns>[up, down, left, right]</returns>
-        public static int[] FurthestEdges(IntVector2 startPoint, Room room)
+        public static IntRect FurthestEdges(IntVector2 startPoint, Room room)
         {
             var tiles = room.Tiles;
             int x, y;
@@ -110,7 +109,7 @@ namespace OracleRooms
                 x--;
             }
 
-            return [up, down, left, right];
+            return new IntRect(left, down, right, up);
         }
     }
 }
