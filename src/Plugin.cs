@@ -56,14 +56,27 @@ sealed partial class Plugin : BaseUnityPlugin
             _ = new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
             _ = new Hook(typeof(CLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
 
+            On.SLOracleBehavior.RandomRoomPoint += SLOracleBehavior_RandomRoomPoint;
+            On.SLOracleBehavior.ClampMediaPos += SLOracleBehavior_ClampMediaPos;
             _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition);
 
-            _ = new Hook(
-                typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
+            _ = new Hook(typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
                     nameof(SSOracleBehavior.SSSleepoverBehavior.holdPlayerPos),
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetGetMethod(true),
                 SSSleepoverBehavior_holdPlayerPos);
+            _ = new Hook(typeof(SSOracleBehavior.SSOracleMeetPurple).GetProperty(
+                    nameof(SSOracleBehavior.SSOracleMeetPurple.holdPlayerPos),
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetGetMethod(true),
+                SSOracleMeetPurple_holdPlayerPos);
+            _ = new Hook(typeof(SSOracleBehavior.SSOracleGetGreenNeuron).GetProperty(
+                    nameof(SSOracleBehavior.SSOracleGetGreenNeuron.holdPlayerPos),
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetGetMethod(true),
+                SSOracleGetGreenNeuron_holdPlayerPos);
+
+            On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint += CLOracleBehavior_RandomRoomPoint;
 
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
