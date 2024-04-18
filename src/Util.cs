@@ -123,5 +123,14 @@ namespace OracleRooms
 
             return new IntRect(left, down, right, up);
         }
+
+        public static Rect FurthestEdges(Vector2 pos, Room room)
+        {
+            var rect = FurthestEdges(room.GetTilePosition(pos), room);
+            var bl = room.MiddleOfTile(rect.left, rect.bottom);
+            var tr = room.MiddleOfTile(rect.right, rect.top);
+
+            return new Rect(bl.x, bl.y, tr.x - bl.x, tr.y - bl.y);
+        }
     }
 }

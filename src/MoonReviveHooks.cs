@@ -170,7 +170,7 @@ namespace OracleRooms
 
                 return new IntVector2(x, y);
             }
-            return orig;
+            return origPos;
         }
     }
 }

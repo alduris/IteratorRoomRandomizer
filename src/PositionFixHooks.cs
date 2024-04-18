@@ -53,21 +53,14 @@ namespace OracleRooms
 
         private Vector2 SLOracleBehavior_RandomRoomPoint(On.SLOracleBehavior.orig_RandomRoomPoint orig, SLOracleBehavior self)
         {
-            var room = self.oracle.room;
-            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(self.oracle)), room);
-            var width = (rect.Width - 1) * 20f;
-            var height = (rect.Height - 1) * 20f;
-            return room.MiddleOfTile(rect.left, rect.bottom) + new Vector2(width * Random.value, height * Random.value);
+            var rect = Util.FurthestEdges(OraclePos(self.oracle), self.oracle.room);
+            return new Vector2(rect.xMin, rect.yMin) + new Vector2(rect.width * Random.value, rect.height * Random.value);
         }
 
         private Vector2 SLOracleBehavior_ClampMediaPos(On.SLOracleBehavior.orig_ClampMediaPos orig, SLOracleBehavior self, Vector2 mediaPos)
         {
-            var room = self.oracle.room;
-            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(self.oracle)), room);
-
-            var bl = room.MiddleOfTile(rect.left, rect.bottom);
-            var tr = room.MiddleOfTile(rect.right, rect.top);
-            return new Vector2(Mathf.Min(Mathf.Max(mediaPos.x, bl.x), tr.x), Mathf.Min(Mathf.Max(mediaPos.y, bl.y), tr.y));
+            var rect = Util.FurthestEdges(OraclePos(self.oracle), self.oracle.room);
+            return new Vector2(Mathf.Min(Mathf.Max(mediaPos.x, rect.xMin), rect.xMax), Mathf.Min(Mathf.Max(mediaPos.y, rect.yMin), rect.yMax));
         }
 
         private bool SLOracleBehavior_InSitPosition(Func<SLOracleBehavior, bool> orig, SLOracleBehavior self)
@@ -193,11 +186,8 @@ namespace OracleRooms
 
         private Vector2 CLOracleBehavior_RandomRoomPoint(On.MoreSlugcats.CLOracleBehavior.orig_RandomRoomPoint orig, CLOracleBehavior self)
         {
-            var room = self.oracle.room;
-            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(self.oracle)), room);
-            var width = (rect.Width - 1) * 20f;
-            var height = (rect.Height - 1) * 20f;
-            return room.MiddleOfTile(rect.left, rect.bottom) + new Vector2(width * Random.value, height * Random.value);
+            var rect = Util.FurthestEdges(OraclePos(self.oracle), self.oracle.room);
+            return new Vector2(rect.xMin, rect.yMin) + new Vector2(rect.width * Random.value, rect.height * Random.value);
         }
 
 
@@ -209,9 +199,7 @@ namespace OracleRooms
             orig(self, oracle);
 
             var room = oracle.room;
-            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(oracle)), room);
-            self.boxBounds = new Rect(room.MiddleOfTile(rect.left, rect.bottom), new Vector2(rect.Width - 1, rect.Height - 1) * 20f);
-            // subtract 1 from width and height so half a tile padding all sides
+            self.boxBounds = Util.FurthestEdges(OraclePos(oracle), room);
 
             for (int i = 0; i < self.gridPositions.GetLength(0); i++)
             {
