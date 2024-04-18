@@ -55,6 +55,8 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update;
             IL.SLOracleBehaviorNoMark.Update += SLOracleBehaviorNoMark_Update;
             On.MoreSlugcats.SpearMasterPearl.NewRoom += SpearMasterPearl_NewRoom;
+            IL.Oracle.ctor += Oracle_ctor1;
+            manualHooks.Add(new Hook(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsRottedPebbles)).GetGetMethod(), OracleGraphics_IsRottedPebbles));
 
             // Bugfix and position unhardcoding for moon revive in Hunter
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
@@ -114,11 +116,13 @@ sealed partial class Plugin : BaseUnityPlugin
         {
             IL.Room.ReadyForAI -= Room_ReadyForAI;
             IL.Oracle.ctor -= Oracle_ctor;
+            On.OverWorld.ctor -= OverWorld_ctor;
 
             On.SSOracleBehavior.LockShortcuts -= SSOracleBehavior_LockShortcuts;
             IL.PebblesPearl.Update -= PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update -= SSOracleMeetWhite_Update;
             On.MoreSlugcats.SpearMasterPearl.NewRoom -= SpearMasterPearl_NewRoom;
+            IL.Oracle.ctor -= Oracle_ctor1;
 
             IL.SLOracleWakeUpProcedure.Update -= SLOracleWakeUpProcedure_Update;
 
@@ -135,8 +139,6 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.SSOracleBehavior.ThrowOutBehavior.Update -= ThrowOutBehavior_Update;
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint -= CLOracleBehavior_RandomRoomPoint;
             On.MoreSlugcats.STOracleBehavior.ctor -= STOracleBehavior_ctor;
-
-            On.OverWorld.ctor -= OverWorld_ctor;
 
             foreach (var hook in manualHooks)
             {

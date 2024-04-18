@@ -1,4 +1,5 @@
-﻿using CoralBrain;
+﻿using System;
+using CoralBrain;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MoreSlugcats;
@@ -7,6 +8,24 @@ namespace OracleRooms
 {
     partial class Plugin
     {
+        private bool OracleGraphics_IsRottedPebbles(Func<OracleGraphics, bool> orig, OracleGraphics self)
+        {
+            return orig(self) || (ModManager.MSC && self.oracle.room.game.StoryCharacter == MoreSlugcatsEnums.SlugcatStatsName.Rivulet);
+        }
+
+        private void Oracle_ctor1(ILContext il)
+        {
+            // Make rotted pebbles spawn in rivulet
+            var c = new ILCursor(il);
+            
+            c.GotoNext(x => x.MatchNewobj<SSOracleRotBehavior>());
+            c.GotoPrev(MoveType.After, x => x.MatchLdstr("RM"), x => x.MatchCallOrCallvirt(out _));
+
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((Oracle self) => ModManager.MSC && self.room.game.StoryCharacter == MoreSlugcatsEnums.SlugcatStatsName.Rivulet);
+            c.Emit(OpCodes.Or);
+        }
+
         private void SpearMasterPearl_NewRoom(On.MoreSlugcats.SpearMasterPearl.orig_NewRoom orig, SpearMasterPearl self, Room newRoom)
         {
             // Fixes null ref crash when meeting Pebbles
