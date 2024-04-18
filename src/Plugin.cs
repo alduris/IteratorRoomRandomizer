@@ -72,6 +72,7 @@ sealed partial class Plugin : BaseUnityPlugin
             On.SLOracleBehavior.ClampMediaPos += SLOracleBehavior_ClampMediaPos;
             On.SLOracleBehavior.BasePosScore += SLOracleBehavior_BasePosScore;
             IL.SLOracleBehavior.Move += SLOracleBehavior_Move;
+            IL.SLOracleBehavior.Update += SLOracleBehavior_Update;
             manualHooks.Add(new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition));
 
             On.SSOracleBehavior.BasePosScore += SSOracleBehavior_BasePosScore;
@@ -96,6 +97,9 @@ sealed partial class Plugin : BaseUnityPlugin
                 .GetGetMethod(true),
                 SSOracleGetGreenNeuron_holdPlayerPos));
 
+            IL.MoreSlugcats.SSOracleRotBehavior.Update += SSOracleRotBehavior_Update;
+            manualHooks.Add(new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(SSOracleRotBehavior.InSitPosition)).GetGetMethod(), SSOracleRotBehavior_InSitPosition));
+
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint += CLOracleBehavior_RandomRoomPoint;
 
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
@@ -114,6 +118,13 @@ sealed partial class Plugin : BaseUnityPlugin
     {
         try
         {
+            foreach (var hook in manualHooks)
+            {
+                hook.Undo();
+                hook.Dispose();
+            }
+            manualHooks.Clear();
+
             IL.Room.ReadyForAI -= Room_ReadyForAI;
             IL.Oracle.ctor -= Oracle_ctor;
             On.OverWorld.ctor -= OverWorld_ctor;
@@ -131,25 +142,21 @@ sealed partial class Plugin : BaseUnityPlugin
             On.SLOracleBehavior.ClampMediaPos -= SLOracleBehavior_ClampMediaPos;
             On.SLOracleBehavior.BasePosScore -= SLOracleBehavior_BasePosScore;
             IL.SLOracleBehavior.Move -= SLOracleBehavior_Move;
+            IL.SLOracleBehavior.Update -= SLOracleBehavior_Update;
             On.SSOracleBehavior.BasePosScore -= SSOracleBehavior_BasePosScore;
             IL.SSOracleBehavior.Move -= SSOracleBehavior_Move;
             IL.SSOracleBehavior.Update -= SSOracleBehavior_Update;
             IL.SSOracleBehavior.SSOracleMeetPurple.Update -= SSOracleMeetPurple_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update -= SSOracleMeetWhite_Update1;
             IL.SSOracleBehavior.ThrowOutBehavior.Update -= ThrowOutBehavior_Update;
+            IL.MoreSlugcats.SSOracleRotBehavior.Update -= SSOracleRotBehavior_Update;
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint -= CLOracleBehavior_RandomRoomPoint;
             On.MoreSlugcats.STOracleBehavior.ctor -= STOracleBehavior_ctor;
-
-            foreach (var hook in manualHooks)
-            {
-                hook.Undo();
-                hook.Dispose();
-            }
         }
         catch (Exception e)
         {
             // if an IL hook didn't apply correctly, it would make sense if it reached here
-            Logger.LogError("Could not unapply hooks either");
+            Logger.LogError("Could not unapply hooks either (note that if it's the same method erroring, that's normal and fine)");
             Logger.LogError(e);
         }
     }

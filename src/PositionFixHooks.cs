@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -16,6 +19,7 @@ namespace OracleRooms
 
         ///////////////////////////////////////////////////////////////////////
         // Misc hooks
+        #region misc
 
         private void OracleArm_ctor(On.Oracle.OracleArm.orig_ctor orig, Oracle.OracleArm self, Oracle oracle)
         {
@@ -47,9 +51,12 @@ namespace OracleRooms
             return self.moonActive ? orig(self) : OraclePos(self.oracle);
         }
 
+        #endregion misc
+
 
         ///////////////////////////////////////////////////////////////////////
         // Moon's hooks
+        #region moon
 
         private Vector2 SLOracleBehavior_RandomRoomPoint(On.SLOracleBehavior.orig_RandomRoomPoint orig, SLOracleBehavior self)
         {
@@ -93,9 +100,38 @@ namespace OracleRooms
             }
         }
 
+        private void SLOracleBehavior_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            // Some sitting conditions
+            for (int i = 0; i < 2; i++)
+            {
+                c.GotoNext(MoveType.After, x => x.MatchLdcR4(1430f));
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((float old, SLOracleBehavior self) => OraclePos(self.oracle).x - 200f);
+
+                c.GotoNext(MoveType.After, x => x.MatchLdcR4(1560f) || x.MatchLdcR4(1660f));
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((float old, SLOracleBehavior self) => OraclePos(self.oracle).x + 200f);
+            }
+
+            // For seeing the player(s)
+            var matchRef = typeof(Enumerable).GetMethod(nameof(Enumerable.Where), [typeof(IEnumerable<>), typeof(Func<,>)]).MakeGenericMethod([typeof(Player)]);
+            c.GotoNext(x => x.MatchCall(matchRef));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((Func<Player, bool> orig, SLOracleBehavior self) => ((Player p) => p.firstChunk.pos.x >= self.oracle.arm.cornerPositions[0].x && p.firstChunk.pos.x <= self.oracle.arm.cornerPositions[1].x));
+
+            c.GotoNext(MoveType.After, x => x.MatchLdcR4(1160f));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((float old, SLOracleBehavior self) => self.oracle.arm.cornerPositions[0].x);
+        }
+
+        #endregion moon
 
         ///////////////////////////////////////////////////////////////////////
         // Pebbles hooks
+        #region pebbles
 
         private float SSOracleBehavior_BasePosScore(On.SSOracleBehavior.orig_BasePosScore orig, SSOracleBehavior self, Vector2 tryPos)
         {
@@ -179,6 +215,29 @@ namespace OracleRooms
             orig(self) - new Vector2(668f, 268f) + OraclePos(self.oracle);
         public static Vector2 SSOracleGetGreenNeuron_holdPlayerPos(Func<SSOracleBehavior.SSOracleGetGreenNeuron, Vector2> orig, SSOracleBehavior.SSOracleGetGreenNeuron self) =>
             orig(self) - new Vector2(668f, 268f) + OraclePos(self.oracle);
+
+        #endregion pebbles
+
+        ///////////////////////////////////////////////////////////////////////
+        // Rotted Pebbles hooks
+
+        private void SSOracleRotBehavior_Update(ILContext il)
+        {
+            // Check 2 tiles off of "floor"
+            var c = new ILCursor(il);
+
+            c.GotoNext(MoveType.After, x => x.MatchLdcR4(845f));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((float old, SSOracleRotBehavior self) => self.oracle.room.abstractRoom.name == "RM_AI" ? old : self.oracle.arm.cornerPositions[0].y + 40f);
+        }
+
+        private bool SSOracleRotBehavior_InSitPosition(Func<SSOracleRotBehavior, bool> orig, SSOracleRotBehavior self)
+        {
+            var room = self.oracle.room;
+            var wantedTile = room.GetTilePosition(OraclePos(self.oracle));
+            var oracleTile = room.GetTilePosition(self.oracle.firstChunk.pos);
+            return Math.Abs(oracleTile.x - wantedTile.x) < 2 && room.GetTile(oracleTile - new IntVector2(0, 1)).Solid;
+        }
 
 
         ///////////////////////////////////////////////////////////////////////
