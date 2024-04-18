@@ -117,7 +117,7 @@ namespace OracleRooms
             }
 
             // For seeing the player(s)
-            var matchRef = typeof(Enumerable).GetMethod(nameof(Enumerable.Where), [typeof(IEnumerable<>), typeof(Func<,>)]).MakeGenericMethod([typeof(Player)]);
+            var matchRef = new Func<IEnumerable<Player>, Func<Player, bool>, IEnumerable<Player>>(Enumerable.Where).Method;
             c.GotoNext(x => x.MatchCall(matchRef));
             c.Emit(OpCodes.Ldarg_0);
             c.EmitDelegate((Func<Player, bool> orig, SLOracleBehavior self) => ((Player p) => p.firstChunk.pos.x >= self.oracle.arm.cornerPositions[0].x && p.firstChunk.pos.x <= self.oracle.arm.cornerPositions[1].x));
