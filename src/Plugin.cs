@@ -5,10 +5,12 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
 using BepInEx;
+using BepInEx.Logging;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MoreSlugcats;
+using UnityEngine;
 using Random = UnityEngine.Random;
 
 // Allows access to private members
@@ -22,11 +24,16 @@ namespace OracleRooms;
 sealed partial class Plugin : BaseUnityPlugin
 {
     bool init;
+    public static new ManualLogSource Logger;
+    private readonly List<Hook> manualHooks = [];
 
     public void OnEnable()
     {
+        Logger = base.Logger;
         On.RainWorld.OnModsInit += OnModsInit;
     }
+
+    private void OnDisable() => Unapply();
 
     private void OnModsInit(On.RainWorld.orig_OnModsInit orig, RainWorld self)
     {
@@ -37,8 +44,10 @@ sealed partial class Plugin : BaseUnityPlugin
 
         try
         {
+            // Primary functionality
             IL.Room.ReadyForAI += Room_ReadyForAI;
             IL.Oracle.ctor += Oracle_ctor;
+            On.OverWorld.ctor += OverWorld_ctor;
 
             // Misc fixes
             On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
@@ -53,41 +62,92 @@ sealed partial class Plugin : BaseUnityPlugin
             // General position unhardcoding fixes
             On.Oracle.OracleArm.ctor += OracleArm_ctor;
             
-            _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), SLOracleBehavior_OracleGetToPos);
-            _ = new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
-            _ = new Hook(typeof(CLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos);
+            manualHooks.Add(new Hook(typeof(SLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), SLOracleBehavior_OracleGetToPos));
+            manualHooks.Add(new Hook(typeof(SSOracleRotBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos));
+            manualHooks.Add(new Hook(typeof(CLOracleBehavior).GetProperty(nameof(OracleBehavior.OracleGetToPos)).GetGetMethod(), OracleBehavior_OracleGetToPos));
 
             On.SLOracleBehavior.RandomRoomPoint += SLOracleBehavior_RandomRoomPoint;
             On.SLOracleBehavior.ClampMediaPos += SLOracleBehavior_ClampMediaPos;
-            _ = new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition);
+            On.SLOracleBehavior.BasePosScore += SLOracleBehavior_BasePosScore;
+            IL.SLOracleBehavior.Move += SLOracleBehavior_Move;
+            manualHooks.Add(new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition));
 
-            _ = new Hook(typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
+            On.SSOracleBehavior.BasePosScore += SSOracleBehavior_BasePosScore;
+            IL.SSOracleBehavior.Move += SSOracleBehavior_Move;
+            IL.SSOracleBehavior.Update += SSOracleBehavior_Update;
+            IL.SSOracleBehavior.SSOracleMeetPurple.Update += SSOracleMeetPurple_Update;
+            IL.SSOracleBehavior.SSOracleMeetWhite.Update += SSOracleMeetWhite_Update1;
+            IL.SSOracleBehavior.ThrowOutBehavior.Update += ThrowOutBehavior_Update;
+            manualHooks.Add(new Hook(typeof(SSOracleBehavior.SSSleepoverBehavior).GetProperty(
                     nameof(SSOracleBehavior.SSSleepoverBehavior.holdPlayerPos),
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetGetMethod(true),
-                SSSleepoverBehavior_holdPlayerPos);
-            _ = new Hook(typeof(SSOracleBehavior.SSOracleMeetPurple).GetProperty(
+                SSSleepoverBehavior_holdPlayerPos));
+            manualHooks.Add(new Hook(typeof(SSOracleBehavior.SSOracleMeetPurple).GetProperty(
                     nameof(SSOracleBehavior.SSOracleMeetPurple.holdPlayerPos),
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetGetMethod(true),
-                SSOracleMeetPurple_holdPlayerPos);
-            _ = new Hook(typeof(SSOracleBehavior.SSOracleGetGreenNeuron).GetProperty(
+                SSOracleMeetPurple_holdPlayerPos));
+            manualHooks.Add(new Hook(typeof(SSOracleBehavior.SSOracleGetGreenNeuron).GetProperty(
                     nameof(SSOracleBehavior.SSOracleGetGreenNeuron.holdPlayerPos),
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetGetMethod(true),
-                SSOracleGetGreenNeuron_holdPlayerPos);
+                SSOracleGetGreenNeuron_holdPlayerPos));
 
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint += CLOracleBehavior_RandomRoomPoint;
 
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
-            // Apply this one last so no rooms get assigned if any previous hooks fail
-            On.OverWorld.ctor += OverWorld_ctor;
-
+            // Done!
             Logger.LogDebug("Finished applying hooks :)");
         }
         catch (Exception e)
         {
+            Logger.LogError(e);
+            Unapply();
+        }
+    }
+
+    private void Unapply()
+    {
+        try
+        {
+            IL.Room.ReadyForAI -= Room_ReadyForAI;
+            IL.Oracle.ctor -= Oracle_ctor;
+
+            On.SSOracleBehavior.LockShortcuts -= SSOracleBehavior_LockShortcuts;
+            IL.PebblesPearl.Update -= PebblesPearl_Update;
+            IL.SSOracleBehavior.SSOracleMeetWhite.Update -= SSOracleMeetWhite_Update;
+            On.MoreSlugcats.SpearMasterPearl.NewRoom -= SpearMasterPearl_NewRoom;
+
+            IL.SLOracleWakeUpProcedure.Update -= SLOracleWakeUpProcedure_Update;
+
+            On.Oracle.OracleArm.ctor -= OracleArm_ctor;
+            On.SLOracleBehavior.RandomRoomPoint -= SLOracleBehavior_RandomRoomPoint;
+            On.SLOracleBehavior.ClampMediaPos -= SLOracleBehavior_ClampMediaPos;
+            On.SLOracleBehavior.BasePosScore -= SLOracleBehavior_BasePosScore;
+            IL.SLOracleBehavior.Move -= SLOracleBehavior_Move;
+            On.SSOracleBehavior.BasePosScore -= SSOracleBehavior_BasePosScore;
+            IL.SSOracleBehavior.Move -= SSOracleBehavior_Move;
+            IL.SSOracleBehavior.Update -= SSOracleBehavior_Update;
+            IL.SSOracleBehavior.SSOracleMeetPurple.Update -= SSOracleMeetPurple_Update;
+            IL.SSOracleBehavior.SSOracleMeetWhite.Update -= SSOracleMeetWhite_Update1;
+            IL.SSOracleBehavior.ThrowOutBehavior.Update -= ThrowOutBehavior_Update;
+            On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint -= CLOracleBehavior_RandomRoomPoint;
+            On.MoreSlugcats.STOracleBehavior.ctor -= STOracleBehavior_ctor;
+
+            On.OverWorld.ctor -= OverWorld_ctor;
+
+            foreach (var hook in manualHooks)
+            {
+                hook.Undo();
+                hook.Dispose();
+            }
+        }
+        catch (Exception e)
+        {
+            // if an IL hook didn't apply correctly, it would make sense if it reached here
+            Logger.LogError("Could not unapply hooks either");
             Logger.LogError(e);
         }
     }

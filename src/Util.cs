@@ -41,6 +41,18 @@ namespace OracleRooms
             return new Vector2(room.PixelWidth / 2f, room.PixelHeight / 2f);
         }
 
+        public static IntVector2 FirstShortcut(Room room)
+        {
+            foreach (var shortcut in room.shortcuts)
+            {
+                if (shortcut.shortCutType == ShortcutData.Type.RoomExit)
+                {
+                    return shortcut.StartTile;
+                }
+            }
+            throw new Exception("No entrances in room somehow");
+        }
+
         public static bool PointsCanReach(IntVector2 A, IntVector2 B, Room room)
         {
             var flyTemplate = StaticWorld.GetCreatureTemplate(CreatureTemplate.Type.Fly);

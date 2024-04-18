@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using MoreSlugcats;
 using RWCustom;
 using UnityEngine;
@@ -74,16 +76,116 @@ namespace OracleRooms
             return oracle.room.GetTilePosition(oracle.firstChunk.pos).x == oracle.room.GetTilePosition(OraclePos(oracle)).x && !self.moonActive;
         }
 
+        private double SLOracleBehavior_BasePosScore(On.SLOracleBehavior.orig_BasePosScore orig, SLOracleBehavior self, Vector2 tryPos)
+        {
+            if (self.movementBehavior == SLOracleBehavior.MovementBehavior.Meditate || self.player == null)
+            {
+                return (double)Vector2.Distance(tryPos, OraclePos(self.oracle));
+            }
+            return orig(self, tryPos);
+        }
+
+        private void SLOracleBehavior_Move(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            for (int i = 0; i < 2; i++)
+            {
+                c.GotoNext(MoveType.After, x => x.MatchLdcI4(77), x => x.MatchLdcI4(18));
+                c.Emit(OpCodes.Ldarg_0);
+                // consume the previous numbers (they were delicious) (actually we just don't want to waste stack resources)
+                c.EmitDelegate((int a, int b, SLOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).x);
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SLOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).y);
+            }
+        }
+
 
         ///////////////////////////////////////////////////////////////////////
         // Pebbles hooks
 
+        private float SSOracleBehavior_BasePosScore(On.SSOracleBehavior.orig_BasePosScore orig, SSOracleBehavior self, Vector2 tryPos)
+        {
+            if (self.movementBehavior == SSOracleBehavior.MovementBehavior.Meditate || self.player == null)
+            {
+                return Vector2.Distance(tryPos, OraclePos(self.oracle));
+            }
+            return orig(self, tryPos);
+        }
+
+        private void SSOracleBehavior_Move(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            for (int i = 0; i < 2; i++)
+            {
+                c.GotoNext(MoveType.After, x => x.MatchLdcI4(24), x => x.MatchLdcI4(17));
+                c.Emit(OpCodes.Ldarg_0);
+                // consume the previous numbers (they were delicious) (actually we just don't want to waste stack resources)
+                c.EmitDelegate((int a, int b, SSOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).x);
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SSOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).y);
+            }
+        }
+
+        private void SSOracleBehavior_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            c.GotoNext(MoveType.After, x => x.MatchLdcI4(24), x => x.MatchLdcI4(14));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((int a, int b, SSOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).x);
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((SSOracleBehavior self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).y);
+        }
+
+        private void SSOracleMeetPurple_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            for (int i = 0; i < 2; i++)
+            {
+                c.GotoNext(MoveType.After, x => x.MatchLdcI4(28), x => x.MatchLdcI4(32));
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((int a, int b, SSOracleBehavior.SSOracleMeetPurple self) => Util.FirstShortcut(self.oracle.room).x);
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SSOracleBehavior.SSOracleMeetPurple self) => Util.FirstShortcut(self.oracle.room).y);
+            }
+        }
+
+        private void SSOracleMeetWhite_Update1(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            for (int i = 0; i < 4; i++)
+            {
+                c.GotoNext(MoveType.After, x => x.MatchLdcI4(24), x => x.MatchLdcI4(14));
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((int a, int b, SSOracleBehavior.SSOracleMeetWhite self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).x);
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SSOracleBehavior.SSOracleMeetWhite self) => self.oracle.room.GetTilePosition(OraclePos(self.oracle)).y);
+            }
+        }
+
+        private void ThrowOutBehavior_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            while (c.TryGotoNext(MoveType.After, x => x.MatchLdcI4(24) || x.MatchLdcI4(28), x => x.MatchLdcI4(33) || x.MatchLdcI4(32)))
+            {
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((int a, int b, SSOracleBehavior.ThrowOutBehavior self) => Util.FirstShortcut(self.oracle.room).x);
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SSOracleBehavior.ThrowOutBehavior self) => Util.FirstShortcut(self.oracle.room).y);
+            }
+        }
+
         public static Vector2 SSSleepoverBehavior_holdPlayerPos(Func<SSOracleBehavior.SSSleepoverBehavior, Vector2> orig, SSOracleBehavior.SSSleepoverBehavior self) =>
-            orig(self) + OraclePos(self.oracle) - new Vector2(668f, 268f);
+            orig(self) - new Vector2(668f, 268f) + OraclePos(self.oracle);
         public static Vector2 SSOracleMeetPurple_holdPlayerPos(Func<SSOracleBehavior.SSOracleMeetPurple, Vector2> orig, SSOracleBehavior.SSOracleMeetPurple self) =>
-            orig(self) + OraclePos(self.oracle) - new Vector2(668f, 268f);
+            orig(self) - new Vector2(668f, 268f) + OraclePos(self.oracle);
         public static Vector2 SSOracleGetGreenNeuron_holdPlayerPos(Func<SSOracleBehavior.SSOracleGetGreenNeuron, Vector2> orig, SSOracleBehavior.SSOracleGetGreenNeuron self) =>
-            orig(self) + OraclePos(self.oracle) - new Vector2(668f, 268f);
+            orig(self) - new Vector2(668f, 268f) + OraclePos(self.oracle);
 
 
         ///////////////////////////////////////////////////////////////////////
