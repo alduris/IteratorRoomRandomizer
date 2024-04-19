@@ -132,6 +132,7 @@ sealed partial class Plugin : BaseUnityPlugin
             On.SSOracleBehavior.LockShortcuts -= SSOracleBehavior_LockShortcuts;
             IL.PebblesPearl.Update -= PebblesPearl_Update;
             IL.SSOracleBehavior.SSOracleMeetWhite.Update -= SSOracleMeetWhite_Update;
+            IL.SLOracleBehaviorNoMark.Update -= SLOracleBehaviorNoMark_Update;
             On.MoreSlugcats.SpearMasterPearl.NewRoom -= SpearMasterPearl_NewRoom;
             IL.Oracle.ctor -= Oracle_ctor1;
 
@@ -213,33 +214,40 @@ sealed partial class Plugin : BaseUnityPlugin
     private void OverWorld_ctor(On.OverWorld.orig_ctor orig, OverWorld self, RainWorldGame game)
     {
         orig(self, game);
-        if (game.IsStorySession)
+        try
         {
-            var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
-            Dictionary<string, Oracle.OracleID> rooms = [];
-            foreach (var oracle in Oracle.OracleID.values.entries)
+            if (game.IsStorySession)
             {
-                if (oracle.ToLower().Contains("cutscene")) continue;
-
-                // Get a random room in a story region (so that we can actually access the iterator)
-                string room;
-                int i = 0;
-                do
+                var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
+                Dictionary<string, Oracle.OracleID> rooms = [];
+                foreach (var oracle in Oracle.OracleID.values.entries)
                 {
-                    room = roomList[Random.Range(0, roomList.Length)];
-                }
-                while (
-                    // No offscreen dens
-                    room.ToUpperInvariant().Contains("OFFSCREEN") ||
-                    // No non-story regions (though if we run out of options, just accept whatever we have)
-                    (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())))
-                );
-                rooms[room] = new Oracle.OracleID(oracle, false);
+                    if (oracle.ToLower().Contains("cutscene")) continue;
 
-                // Log it for debugging purposes
-                Logger.LogDebug(oracle + ": " + room);
+                    // Get a random room in a story region (so that we can actually access the iterator)
+                    string room;
+                    int i = 0;
+                    do
+                    {
+                        room = roomList[Random.Range(0, roomList.Length)];
+                    }
+                    while (
+                        // No offscreen dens
+                        room.ToUpperInvariant().Contains("OFFSCREEN") ||
+                        // No non-story regions (though if we run out of options, just accept whatever we have)
+                        (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())))
+                    );
+                    rooms[room] = new Oracle.OracleID(oracle, false);
+
+                    // Log it for debugging purposes
+                    Logger.LogDebug(oracle + ": " + room);
+                }
+                itercwt.Add(self, rooms);
             }
-            itercwt.Add(self, rooms);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e);
         }
     }
 
