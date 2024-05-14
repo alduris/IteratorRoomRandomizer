@@ -15,7 +15,7 @@ namespace OracleRooms
     partial class Plugin
     {
         private static readonly ConditionalWeakTable<AbstractPhysicalObject, StrongBox<Vector2>> oraclePosCWT = new();
-        private static Vector2 OraclePos(Oracle self) => oraclePosCWT.GetValue(self.abstractPhysicalObject, _ => new StrongBox<Vector2>(Util.RandomAccessiblePoint(self.room))).Value;
+        public static Vector2 OraclePos(Oracle self) => oraclePosCWT.GetValue(self.abstractPhysicalObject, _ => new StrongBox<Vector2>(Util.RandomAccessiblePoint(self.room))).Value;
 
         ///////////////////////////////////////////////////////////////////////
         // Misc hooks
@@ -26,13 +26,7 @@ namespace OracleRooms
             orig(self, oracle);
 
             // Set new arm positions
-            var room = oracle.room;
-            var rect = Util.FurthestEdges(room.GetTilePosition(OraclePos(oracle)), room);
-
-            self.cornerPositions[0] = room.MiddleOfTile(rect.left, rect.top);
-            self.cornerPositions[1] = room.MiddleOfTile(rect.right, rect.top);
-            self.cornerPositions[2] = room.MiddleOfTile(rect.right, rect.bottom);
-            self.cornerPositions[3] = room.MiddleOfTile(rect.left, rect.bottom);
+            Util.SetCornerPositions(self.cornerPositions, oracle);
 
             // Reset joint positions
             foreach (var joint in self.joints)

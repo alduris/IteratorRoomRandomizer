@@ -57,6 +57,8 @@ sealed partial class Plugin : BaseUnityPlugin
             On.MoreSlugcats.SpearMasterPearl.NewRoom += SpearMasterPearl_NewRoom;
             IL.Oracle.ctor += Oracle_ctor1;
             manualHooks.Add(new Hook(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsRottedPebbles)).GetGetMethod(), OracleGraphics_IsRottedPebbles));
+            On.Oracle.ctor += Oracle_ctor2;
+            IL.OracleGraphics.Update += DebugHook;
 
             // Bugfix and position unhardcoding for moon revive in Hunter
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
@@ -104,6 +106,17 @@ sealed partial class Plugin : BaseUnityPlugin
 
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
+            // "Compatibility" (aggressive)
+            if (ModManager.ActiveMods.Any(x => x.name.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                // IteratorKitHooks.Apply();
+            }
+
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("emgtx", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                EmgTxHooks.Apply();
+            }
+
             // Done!
             Logger.LogDebug("Finished applying hooks :)");
         }
@@ -135,6 +148,7 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.SLOracleBehaviorNoMark.Update -= SLOracleBehaviorNoMark_Update;
             On.MoreSlugcats.SpearMasterPearl.NewRoom -= SpearMasterPearl_NewRoom;
             IL.Oracle.ctor -= Oracle_ctor1;
+            On.Oracle.ctor -= Oracle_ctor2;
 
             IL.SLOracleWakeUpProcedure.Update -= SLOracleWakeUpProcedure_Update;
 
@@ -153,12 +167,41 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.MoreSlugcats.SSOracleRotBehavior.Update -= SSOracleRotBehavior_Update;
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint -= CLOracleBehavior_RandomRoomPoint;
             On.MoreSlugcats.STOracleBehavior.ctor -= STOracleBehavior_ctor;
+
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                IteratorKitHooks.Unapply();
+            }
+
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("emgtx", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                EmgTxHooks.Unapply();
+            }
         }
         catch (Exception e)
         {
             // if an IL hook didn't apply correctly, it would make sense if it reached here
             Logger.LogError("Could not unapply hooks either (note that if it's the same method erroring, that's normal and fine)");
             Logger.LogError(e);
+        }
+    }
+
+    private void DebugHook(ILContext il)
+    {
+        var c1 = new ILCursor(il);
+        while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _)))
+        {
+            var instr = c1.Next;
+            c1.EmitDelegate(() => Logger.LogDebug(instr));
+            c1.Index++;
+        }
+
+        var c2 = new ILCursor(il);
+        while (c2.TryGotoNext(x => x.MatchLdfld(out _)))
+        {
+            var instr = c2.Next;
+            c2.EmitDelegate(() => Logger.LogDebug(instr));
+            c2.Index++;
         }
     }
 
@@ -201,13 +244,13 @@ sealed partial class Plugin : BaseUnityPlugin
         c.GotoNext(MoveType.After, x => x.MatchStloc(0));
         c.Emit(OpCodes.Ldloc_0);
         c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((bool temp, Room self) => itercwt.TryGetValue(self.game.overWorld, out var d) ? d.ContainsKey(self.abstractRoom.name) : temp);
+        c.EmitDelegate((bool temp, Room self) => itercwt.TryGetValue(self.game.overWorld, out var d) /*&& self.abstractRoom.name != null*/ ? d.ContainsKey(self.abstractRoom.name) : temp);
         c.Emit(OpCodes.Stloc_0);
 
         // Add a new condition to bool
         c.GotoNext(MoveType.AfterLabel, x => x.MatchLdloc(0));
         c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((Room self) => !itercwt.TryGetValue(self.game.overWorld, out var d) || d.ContainsKey(self.abstractRoom.name));
+        c.EmitDelegate((Room self) => !itercwt.TryGetValue(self?.game?.overWorld, out var d) || self?.abstractRoom?.name == null || d.ContainsKey(self.abstractRoom.name));
         c.Emit(OpCodes.And);
     }
 
@@ -220,7 +263,20 @@ sealed partial class Plugin : BaseUnityPlugin
             {
                 var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
                 Dictionary<string, Oracle.OracleID> rooms = [];
-                foreach (var oracle in Oracle.OracleID.values.entries)
+                HashSet<string> oracles = [.. Oracle.OracleID.values.entries];
+
+                // Deal with stuff
+                if (ModManager.ActiveMods.Any(x => x.id.Equals("myr.chasing_wind", StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    oracles.Add("CW");
+                }
+                if (ModManager.ActiveMods.Any(x => x.id.Equals("Quaeledy.hunterexpansion", StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    oracles.Add("NSH");
+                    oracles.Add("SRS");
+                }
+
+                foreach (var oracle in oracles)
                 {
                     if (oracle.ToLower().Contains("cutscene")) continue;
 

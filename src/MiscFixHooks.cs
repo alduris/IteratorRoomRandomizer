@@ -47,7 +47,7 @@ namespace OracleRooms
             c.Emit(OpCodes.Ldarg_0);
             c.EmitDelegate((SLOracleBehaviorNoMark self) =>
             {
-                return self.lockedOverseer.parent.Room.name.ToUpperInvariant().StartsWith("SL");
+                return self.lockedOverseer.parent.Room.name.ToUpperInvariant().StartsWith("SL_");
             });
             c.Emit(OpCodes.And);
 
@@ -57,7 +57,7 @@ namespace OracleRooms
             c.Emit(OpCodes.Ldarg_0);
             c.EmitDelegate((SLOracleBehaviorNoMark self) =>
             {
-                return self.oracle.room.abstractRoom.name.ToUpperInvariant().StartsWith("SL");
+                return self.oracle.room.abstractRoom.name.ToUpperInvariant().StartsWith("SL_");
             });
             c.Emit(OpCodes.Brfalse, brTo);
         }
@@ -97,6 +97,13 @@ namespace OracleRooms
             // Stops Pebbles and Spear's LTTM from trapping us in the room while they whine about our repeated visits
             orig(self);
             self.UnlockShortcuts();
+        }
+
+        private void Oracle_ctor2(On.Oracle.orig_ctor orig, Oracle self, AbstractPhysicalObject abstractPhysicalObject, Room room)
+        {
+            // Prevent future null refs
+            orig(self, abstractPhysicalObject, room);
+            self.oracleBehavior ??= new DummyOracleBehavior(self);
         }
     }
 }

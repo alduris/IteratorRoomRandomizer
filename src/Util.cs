@@ -132,5 +132,25 @@ namespace OracleRooms
 
             return new Rect(bl.x, bl.y, tr.x - bl.x, tr.y - bl.y);
         }
+
+        public static void SetCornerPositions(Vector2[] cornerPositions, Oracle oracle)
+        {
+            var corners = GetCornerPositions(oracle);
+            cornerPositions[0] = corners[0];
+            cornerPositions[1] = corners[1];
+            cornerPositions[2] = corners[2];
+            cornerPositions[3] = corners[3];
+        }
+        public static Vector2[] GetCornerPositions(Oracle oracle)
+        {
+            var room = oracle.room;
+            var rect = FurthestEdges(room.GetTilePosition(Plugin.OraclePos(oracle)), room);
+            return [
+                room.MiddleOfTile(rect.left, rect.top),
+                room.MiddleOfTile(rect.right, rect.top),
+                room.MiddleOfTile(rect.right, rect.bottom),
+                room.MiddleOfTile(rect.left, rect.bottom)
+            ];
+        }
     }
 }
