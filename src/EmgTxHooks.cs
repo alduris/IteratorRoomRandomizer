@@ -8,6 +8,8 @@ using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
+using UnityEngine;
+using COTx = CustomOracleTx.CustomOracleTx;
 
 namespace OracleRooms
 {
@@ -24,7 +26,7 @@ namespace OracleRooms
                 IL.OracleGraphics.Update += OracleGraphics_Update;
                 IL.OracleGraphics.DrawSprites += OracleGraphics_DrawSprites;
 
-                // The most convoluted IL hook in existence
+                // The most convoluted IL hook in existence. I call this the IL inception hook (in reference to the movie)
                 static bool MatchOracleHoox(Type y) => y.Namespace == "CustomOracleTx" && y.Name == "OracleHoox";
                 var OracleHoox = AppDomain.CurrentDomain.GetAssemblies()
                     .Select(x => x.GetTypes())
@@ -61,13 +63,14 @@ namespace OracleRooms
         {
             try
             {
-                IL.OracleGraphics.Update -= OracleGraphics_Update;
-
                 foreach (var hook in mh)
                 {
                     hook.Undo();
                     hook.Dispose();
                 }
+
+                IL.OracleGraphics.Update -= OracleGraphics_Update;
+                IL.OracleGraphics.DrawSprites -= OracleGraphics_DrawSprites;
             }
             finally
             {
@@ -110,32 +113,61 @@ namespace OracleRooms
         {
             var c = new ILCursor(il);
 
+            if (c.TryGotoNext(x => x.MatchLdloc(1), x => x.MatchLdsfld(out _), x => x.MatchDup()))
+            {
+                MethodReference lambdaRef = null;
+                c.GotoNext(x => x.MatchLdftn(out lambdaRef));
+                mh.Add(new ILHook(lambdaRef.ResolveReflection(), OracleHoox_Oracle_ctor_lambda1));
+            }
+            else
+            {
+                Plugin.Logger.LogError("Failed to match target 1 in EmgTx OracleHoox!");
+            }
+
             if (c.TryGotoNext(x => x.MatchLdloc(3), x => x.MatchLdsfld(out _), x => x.MatchDup()))
             {
                 MethodReference lambdaRef = null;
                 c.GotoNext(x => x.MatchLdftn(out lambdaRef));
-                var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-                var hook = new ILHook(lambdaRef.DeclaringType.ResolveReflection().GetMethod(lambdaRef.Name, flags), OracleHoox_Oracle_ctor_lambda);
-                mh.Add(hook);
-                if (!hook.IsApplied) hook.Apply(); // idk if I need this
+                mh.Add(new ILHook(lambdaRef.ResolveReflection(), OracleHoox_Oracle_ctor_lambda2));
             }
             else
             {
-                Plugin.Logger.LogError("Failed to match target in EmgTx OracleHoox!");
+                Plugin.Logger.LogError("Failed to match target 2 in EmgTx OracleHoox!");
             }
         }
 
-        private static void OracleHoox_Oracle_ctor_lambda(ILContext il)
+        private static void OracleHoox_Oracle_ctor_lambda1(ILContext il)
         {
             var c = new ILCursor(il);
 
+            // Modify if-condition with our own custom code
             c.GotoNext(x => x.MatchLdfld<AbstractRoom>(nameof(AbstractRoom.name)));
             c.GotoNext(x => x.MatchStloc(out _));
             c.Emit(OpCodes.Ldarg_1);
-            c.Emit(OpCodes.Ldarg_2);
-            c.EmitDelegate((bool _, Oracle oracle, Room room) =>
+            c.EmitDelegate((bool _, Oracle oracle) =>
             {
-                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.ContainsKey(room.abstractRoom.name) && d[room.abstractRoom.name] == oracle.ID;
+                var room = oracle.room;
+                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.ContainsKey(room.abstractRoom.name);
+            });
+
+            // Spawn body chunks where they should be
+            c.GotoNext(MoveType.After, x => x.MatchLdfld<COTx>(nameof(COTx.startPos)));
+            c.Emit(OpCodes.Ldarg_1);
+            c.EmitDelegate((Vector2 _, Oracle self) => Plugin.OraclePos(self));
+        }
+
+        private static void OracleHoox_Oracle_ctor_lambda2(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            // Modify if-condition with our own custom code
+            c.GotoNext(x => x.MatchLdfld<AbstractRoom>(nameof(AbstractRoom.name)));
+            c.GotoNext(x => x.MatchStloc(out _));
+            c.Emit(OpCodes.Ldarg_1);
+            c.EmitDelegate((bool _, Oracle oracle) =>
+            {
+                var room = oracle.room;
+                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.ContainsKey(room.abstractRoom.name);
             });
         }
     }
