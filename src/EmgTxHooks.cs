@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using CustomOracleTx;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -21,7 +22,7 @@ namespace OracleRooms
             {
                 // Graphics fix :monksilly: (why does this otherwise only happen while *my mod* is enabled and not normally)
                 IL.OracleGraphics.Update += OracleGraphics_Update;
-                IL.OracleGraphics.DrawSprites += Util.DebugHook;
+                IL.OracleGraphics.DrawSprites += OracleGraphics_DrawSprites;
 
                 // The most convoluted IL hook in existence
                 static bool MatchOracleHoox(Type y) => y.Namespace == "CustomOracleTx" && y.Name == "OracleHoox";
@@ -37,6 +38,23 @@ namespace OracleRooms
                 Plugin.Logger.LogError(ex);
                 Unapply();
             }
+        }
+
+        private static void OracleGraphics_DrawSprites(ILContext il)
+        {
+            // This might break the kill animation in the one hunter expanded scene, need to test that. Either way would rather it not show than break the game
+            var c = new ILCursor(il);
+
+            ILLabel target = null;
+            c.GotoNext(
+                x => x.MatchLdarg(0),
+                x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsSaintPebbles)).GetGetMethod().Name), // "get_IsSaintPebbles" is for noobs
+                x => x.MatchBrfalse(out target));
+
+            c.GotoPrev(x => x.MatchLdarg(0), x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsPebbles)).GetGetMethod().Name));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((OracleGraphics self) => self.oracle.oracleBehavior is not CustomOracleBehaviour);
+            c.Emit(OpCodes.Brfalse, target);
         }
 
         public static void Unapply()
@@ -83,7 +101,6 @@ namespace OracleRooms
                 {
                     self.lightsource.setAlpha = 1f;
                 }
-                Plugin.Logger.LogDebug(result);
                 return result;
             });
             c.Emit(OpCodes.Brfalse, target);
