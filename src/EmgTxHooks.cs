@@ -19,6 +19,10 @@ namespace OracleRooms
             Plugin.Logger.LogDebug("Patching EmgTx");
             try
             {
+                // Graphics fix :monksilly: (why does this otherwise only happen while *my mod* is enabled and not normally)
+                IL.OracleGraphics.Update += OracleGraphics_Update;
+                IL.OracleGraphics.DrawSprites += Util.DebugHook;
+
                 // The most convoluted IL hook in existence
                 static bool MatchOracleHoox(Type y) => y.Namespace == "CustomOracleTx" && y.Name == "OracleHoox";
                 var OracleHoox = AppDomain.CurrentDomain.GetAssemblies()
@@ -39,6 +43,8 @@ namespace OracleRooms
         {
             try
             {
+                IL.OracleGraphics.Update -= OracleGraphics_Update;
+
                 foreach (var hook in mh)
                 {
                     hook.Undo();
@@ -49,6 +55,38 @@ namespace OracleRooms
             {
                 mh.Clear();
             }
+        }
+
+        private static void OracleGraphics_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            // Find where it tries to access SSOracleBehavior.working by casing oracleBehavior and stop it from doing that if it isn't actually Pebbles
+            // Thank you EmgTx for tricking the game into thinking NSH is Pebbles. Now why the fuck doesn't this show up normally (without my mod)
+            c.GotoNext(x => x.MatchLdfld<SSOracleBehavior>(nameof(SSOracleBehavior.working)));
+            
+            // Find and save break target
+            c.GotoNext(MoveType.After, x => x.MatchStfld<LightSource>(nameof(LightSource.setAlpha)));
+            Instruction target = c.Next;
+            
+            // need to do after label so else statement reaches it
+            c.GotoPrev(x => x.MatchLdarg(0));
+            c.GotoPrev(MoveType.AfterLabel, x => x.MatchLdarg(0));
+            // c.GotoPrev(MoveType.AfterLabel, x => x.MatchLdarg(0), x => x.MatchLdfld<OracleGraphics>(nameof(OracleGraphics.lightsource)));
+
+            // Check
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((OracleGraphics self) =>
+            {
+                var result = self.oracle.oracleBehavior is SSOracleBehavior;
+                if (!result)
+                {
+                    self.lightsource.setAlpha = 1f;
+                }
+                Plugin.Logger.LogDebug(result);
+                return result;
+            });
+            c.Emit(OpCodes.Brfalse, target);
         }
 
         private static void OracleHoox_Oracle_ctor(ILContext il)

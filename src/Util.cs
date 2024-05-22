@@ -1,13 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using RWCustom;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
 namespace OracleRooms
 {
-    sealed internal class Util
+    internal static class Util
     {
+        /// <summary>
+        /// Useful for finding null reference exceptions in DMDs (the true orig of On hooks)
+        /// </summary>
+        /// <param name="il"></param>
+        public static void DebugHook(ILContext il)
+        {
+            var c1 = new ILCursor(il);
+            var offsets = new Dictionary<Instruction, string>();
+            while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
+            {
+                offsets[c1.Next] = c1.Next.Offset.ToString("X4");
+            }
+
+            var c2 = new ILCursor(il);
+            while (c2.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
+            {
+                var instr = c2.Next;
+                c2.EmitDelegate(() => Plugin.Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));
+                c2.Index++;
+            }
+        }
+
         public static Vector2 RandomAccessiblePoint(Room room)
         {
             var entrances = new List<IntVector2>();

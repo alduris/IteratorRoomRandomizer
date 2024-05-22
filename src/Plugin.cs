@@ -58,7 +58,6 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.Oracle.ctor += Oracle_ctor1;
             manualHooks.Add(new Hook(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsRottedPebbles)).GetGetMethod(), OracleGraphics_IsRottedPebbles));
             On.Oracle.ctor += Oracle_ctor2;
-            IL.OracleGraphics.Update += DebugHook;
 
             // Bugfix and position unhardcoding for moon revive in Hunter
             IL.SLOracleWakeUpProcedure.Update += SLOracleWakeUpProcedure_Update;
@@ -183,32 +182,6 @@ sealed partial class Plugin : BaseUnityPlugin
             // if an IL hook didn't apply correctly, it would make sense if it reached here
             Logger.LogError("Could not unapply hooks either (note that if it's the same method erroring, that's normal and fine)");
             Logger.LogError(e);
-        }
-    }
-
-    private void DebugHook(ILContext il)
-    {
-        var c = new ILCursor(il);
-        var offsets = new Dictionary<Instruction, string>();
-        while (c.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
-        {
-            offsets[c.Next] = c.Next.Offset.ToString("X4");
-        }
-
-        var c1 = new ILCursor(il);
-        while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _)))
-        {
-            var instr = c1.Next;
-            c1.EmitDelegate(() => Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));
-            c1.Index++;
-        }
-
-        var c2 = new ILCursor(il);
-        while (c2.TryGotoNext(x => x.MatchLdfld(out _)))
-        {
-            var instr = c2.Next;
-            c2.EmitDelegate(() => Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));
-            c2.Index++;
         }
     }
 
