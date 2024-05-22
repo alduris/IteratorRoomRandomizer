@@ -144,10 +144,11 @@ namespace OracleRooms
             c.GotoNext(x => x.MatchLdfld<AbstractRoom>(nameof(AbstractRoom.name)));
             c.GotoNext(x => x.MatchStloc(out _));
             c.Emit(OpCodes.Ldarg_1);
-            c.EmitDelegate((bool _, Oracle oracle) =>
+            c.Emit(OpCodes.Ldloc_1);
+            c.EmitDelegate((bool _, Oracle oracle, COTx self) =>
             {
                 var room = oracle.room;
-                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.ContainsKey(room.abstractRoom.name);
+                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.TryGetValue(room.abstractRoom.name, out var id) && self.OracleID == id;
             });
 
             // Spawn body chunks where they should be
@@ -164,10 +165,11 @@ namespace OracleRooms
             c.GotoNext(x => x.MatchLdfld<AbstractRoom>(nameof(AbstractRoom.name)));
             c.GotoNext(x => x.MatchStloc(out _));
             c.Emit(OpCodes.Ldarg_1);
-            c.EmitDelegate((bool _, Oracle oracle) =>
+            c.Emit(OpCodes.Ldloc_1);
+            c.EmitDelegate((bool _, Oracle oracle, COTx self) =>
             {
                 var room = oracle.room;
-                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.ContainsKey(room.abstractRoom.name);
+                return Plugin.itercwt.TryGetValue(room.game.overWorld, out var d) && d.TryGetValue(room.abstractRoom.name, out var id) && self.OracleID == id;
             });
         }
     }
