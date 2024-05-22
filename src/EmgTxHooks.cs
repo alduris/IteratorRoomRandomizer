@@ -42,23 +42,6 @@ namespace OracleRooms
             }
         }
 
-        private static void OracleGraphics_DrawSprites(ILContext il)
-        {
-            // This might break the kill animation in the one hunter expanded scene, need to test that. Either way would rather it not show than break the game
-            var c = new ILCursor(il);
-
-            ILLabel target = null;
-            c.GotoNext(
-                x => x.MatchLdarg(0),
-                x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsSaintPebbles)).GetGetMethod().Name), // "get_IsSaintPebbles" is for noobs
-                x => x.MatchBrfalse(out target));
-
-            c.GotoPrev(x => x.MatchLdarg(0), x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsPebbles)).GetGetMethod().Name));
-            c.Emit(OpCodes.Ldarg_0);
-            c.EmitDelegate((OracleGraphics self) => self.oracle.oracleBehavior is not CustomOracleBehaviour);
-            c.Emit(OpCodes.Brfalse, target);
-        }
-
         public static void Unapply()
         {
             try
@@ -76,6 +59,23 @@ namespace OracleRooms
             {
                 mh.Clear();
             }
+        }
+
+        private static void OracleGraphics_DrawSprites(ILContext il)
+        {
+            // This might break the kill animation in the one hunter expanded scene, need to test that. Either way would rather it not show than break the game
+            var c = new ILCursor(il);
+
+            ILLabel target = null;
+            c.GotoNext(
+                x => x.MatchLdarg(0),
+                x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsSaintPebbles)).GetGetMethod().Name), // "get_IsSaintPebbles" is for noobs
+                x => x.MatchBrfalse(out target));
+
+            c.GotoPrev(x => x.MatchLdarg(0), x => x.MatchCall<OracleGraphics>(typeof(OracleGraphics).GetProperty(nameof(OracleGraphics.IsPebbles)).GetGetMethod().Name));
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((OracleGraphics self) => self.oracle.oracleBehavior is not CustomOracleBehaviour);
+            c.Emit(OpCodes.Brfalse, target);
         }
 
         private static void OracleGraphics_Update(ILContext il)
