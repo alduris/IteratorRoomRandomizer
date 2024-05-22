@@ -253,7 +253,7 @@ sealed partial class Plugin : BaseUnityPlugin
                 if (ModManager.ActiveMods.Any(x => x.id.Equals("Quaeledy.hunterexpansion", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     oracles.Add("NSH");
-                    oracles.Add("SRS");
+                    oracles.Remove("SRS"); // unfinished, don't bother
                 }
 
                 foreach (var oracle in oracles)
