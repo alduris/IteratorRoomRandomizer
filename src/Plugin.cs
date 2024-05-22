@@ -188,11 +188,18 @@ sealed partial class Plugin : BaseUnityPlugin
 
     private void DebugHook(ILContext il)
     {
+        var c = new ILCursor(il);
+        var offsets = new Dictionary<Instruction, string>();
+        while (c.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
+        {
+            offsets[c.Next] = c.Next.Offset.ToString("X4");
+        }
+
         var c1 = new ILCursor(il);
         while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _)))
         {
             var instr = c1.Next;
-            c1.EmitDelegate(() => Logger.LogDebug(instr));
+            c1.EmitDelegate(() => Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));
             c1.Index++;
         }
 
@@ -200,7 +207,7 @@ sealed partial class Plugin : BaseUnityPlugin
         while (c2.TryGotoNext(x => x.MatchLdfld(out _)))
         {
             var instr = c2.Next;
-            c2.EmitDelegate(() => Logger.LogDebug(instr));
+            c2.EmitDelegate(() => Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));
             c2.Index++;
         }
     }
@@ -244,13 +251,13 @@ sealed partial class Plugin : BaseUnityPlugin
         c.GotoNext(MoveType.After, x => x.MatchStloc(0));
         c.Emit(OpCodes.Ldloc_0);
         c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((bool temp, Room self) => itercwt.TryGetValue(self.game.overWorld, out var d) /*&& self.abstractRoom.name != null*/ ? d.ContainsKey(self.abstractRoom.name) : temp);
+        c.EmitDelegate((bool orig, Room self) => (self?.game?.overWorld != null && itercwt.TryGetValue(self.game.overWorld, out var d)) ? d.ContainsKey(self.abstractRoom.name) : orig);
         c.Emit(OpCodes.Stloc_0);
 
         // Add a new condition to bool
         c.GotoNext(MoveType.AfterLabel, x => x.MatchLdloc(0));
         c.Emit(OpCodes.Ldarg_0);
-        c.EmitDelegate((Room self) => !itercwt.TryGetValue(self?.game?.overWorld, out var d) || self?.abstractRoom?.name == null || d.ContainsKey(self.abstractRoom.name));
+        c.EmitDelegate((Room self) => self?.game?.overWorld == null || !itercwt.TryGetValue(self.game.overWorld, out var d) || self.abstractRoom.name == null || d.ContainsKey(self.abstractRoom.name));
         c.Emit(OpCodes.And);
     }
 

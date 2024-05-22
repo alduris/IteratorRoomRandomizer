@@ -12,7 +12,7 @@ namespace OracleRooms
 {
     internal static class EmgTxHooks
     {
-        private static List<ILHook> mh = [];
+        private static readonly List<ILHook> mh = [];
 
         public static void Apply()
         {
@@ -31,6 +31,7 @@ namespace OracleRooms
             {
                 Plugin.Logger.LogError("EmgTx hooks unable to be applied!");
                 Plugin.Logger.LogError(ex);
+                Unapply();
             }
         }
 
