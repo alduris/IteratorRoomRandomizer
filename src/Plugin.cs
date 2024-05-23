@@ -106,9 +106,9 @@ sealed partial class Plugin : BaseUnityPlugin
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
             // "Compatibility" (aggressive)
-            if (ModManager.ActiveMods.Any(x => x.name.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
             {
-                // IteratorKitHooks.Apply();
+                IteratorKitHooks.Apply();
             }
 
             if (ModManager.ActiveMods.Any(x => x.id.Equals("emgtx", StringComparison.InvariantCultureIgnoreCase)))
@@ -254,8 +254,13 @@ sealed partial class Plugin : BaseUnityPlugin
                 var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
                 Dictionary<string, Oracle.OracleID> rooms = [];
                 HashSet<string> oracles = [.. Oracle.OracleID.values.entries];
+                List<string> slugcatRegions = SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Concat(SlugcatStats.SlugcatOptionalRegions(self.game.StoryCharacter)).ToList();
 
                 // Deal with stuff
+                if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    IteratorKitHooks.AddIterators(oracles);
+                }
                 if (ModManager.ActiveMods.Any(x => x.id.Equals("myr.chasing_wind", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     oracles.Add("CW");
@@ -281,7 +286,7 @@ sealed partial class Plugin : BaseUnityPlugin
                         // No offscreen dens
                         room.ToUpperInvariant().Contains("OFFSCREEN") ||
                         // No non-story regions (though if we run out of options, just accept whatever we have)
-                        (i++ < roomList.Length / 4 && !SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())))
+                        (i++ < roomList.Length / 4 && !slugcatRegions.Any(x => room.ToUpperInvariant().StartsWith(x.ToUpperInvariant())))
                     );
                     rooms[room] = new Oracle.OracleID(oracle, false);
 
@@ -289,6 +294,11 @@ sealed partial class Plugin : BaseUnityPlugin
                     Logger.LogDebug(oracle + ": " + room);
                 }
                 itercwt.Add(self, rooms);
+
+                if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    IteratorKitHooks.RearrangeIKData(rooms);
+                }
             }
         }
         catch (Exception e)
