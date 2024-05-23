@@ -103,6 +103,7 @@ namespace OracleRooms
         {
             // Prevent future null refs
             orig(self, abstractPhysicalObject, room);
+            self.arm ??= new Oracle.OracleArm(self);
             self.oracleBehavior ??= new DummyOracleBehavior(self);
         }
     }

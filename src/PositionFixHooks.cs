@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MoreSlugcats;
 using RWCustom;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using OracleArm = Oracle.OracleArm;
 
 namespace OracleRooms
 {
@@ -21,7 +23,7 @@ namespace OracleRooms
         // Misc hooks
         #region misc
 
-        private void OracleArm_ctor(On.Oracle.OracleArm.orig_ctor orig, Oracle.OracleArm self, Oracle oracle)
+        private void OracleArm_ctor(On.Oracle.OracleArm.orig_ctor orig, OracleArm self, Oracle oracle)
         {
             orig(self, oracle);
 
@@ -250,6 +252,13 @@ namespace OracleRooms
         private void STOracleBehavior_ctor(On.MoreSlugcats.STOracleBehavior.orig_ctor orig, STOracleBehavior self, Oracle oracle)
         {
             orig(self, oracle);
+
+            if (oracle.arm == null)
+            {
+                // Fixes null ref, arm gets set after running this anyway
+                oracle.arm = (OracleArm)FormatterServices.GetUninitializedObject(typeof(OracleArm));
+                oracle.arm.cornerPositions = Util.GetCornerPositions(oracle);
+            }
 
             var room = oracle.room;
             self.boxBounds = Util.FurthestEdges(OraclePos(oracle), room);
