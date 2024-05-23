@@ -18,13 +18,13 @@ namespace OracleRooms
         {
             var c1 = new ILCursor(il);
             var offsets = new Dictionary<Instruction, string>();
-            while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
+            while (c1.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _) || x.MatchLdelemAny(out _)))
             {
                 offsets[c1.Next] = c1.Next.Offset.ToString("X4");
             }
 
             var c2 = new ILCursor(il);
-            while (c2.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _)))
+            while (c2.TryGotoNext(x => x.MatchCallOrCallvirt(out _) || x.MatchLdfld(out _) || x.MatchLdelemAny(out _)))
             {
                 var instr = c2.Next;
                 c2.EmitDelegate(() => Plugin.Logger.LogDebug(offsets[instr] + ": " + instr.ToString()));

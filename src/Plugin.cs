@@ -116,6 +116,13 @@ sealed partial class Plugin : BaseUnityPlugin
                 EmgTxHooks.Apply();
             }
 
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("nyctophobia", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                NyctophobiaHooks.Apply();
+            }
+
+            IL.MoreSlugcats.STOracleBehavior.ClampVectorInRoom += Util.DebugHook;
+
             // Done!
             Logger.LogDebug("Finished applying hooks :)");
         }
@@ -175,6 +182,11 @@ sealed partial class Plugin : BaseUnityPlugin
             if (ModManager.ActiveMods.Any(x => x.id.Equals("emgtx", StringComparison.InvariantCultureIgnoreCase)))
             {
                 EmgTxHooks.Unapply();
+            }
+
+            if (ModManager.ActiveMods.Any(x => x.id.Equals("nyctophobia", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                NyctophobiaHooks.Unapply();
             }
         }
         catch (Exception e)
