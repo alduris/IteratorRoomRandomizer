@@ -121,8 +121,6 @@ sealed partial class Plugin : BaseUnityPlugin
                 NyctophobiaHooks.Apply();
             }
 
-            IL.MoreSlugcats.STOracleBehavior.ClampVectorInRoom += Util.DebugHook;
-
             // Done!
             Logger.LogDebug("Finished applying hooks :)");
         }

@@ -54,37 +54,5 @@ namespace OracleRooms
             realOrig(orig, self, abstractPhysicalObject, room);
             if (isESP) room.abstractRoom.name = origName;
         }
-
-        /*private static void ESPHooks_Oracle_ctor(ILContext il)
-        {
-            var c = new ILCursor(il);
-
-            // See if this is the room
-            c.GotoNext(x => x.MatchLdstr("DD_AI"));
-            c.GotoNext(x => x.MatchStloc(out _));
-            c.Emit(OpCodes.Ldarg_2);
-            c.EmitDelegate((bool val, Room room) =>
-            {
-                if (Plugin.itercwt.TryGetValue(room.game.overWorld, out var d))
-                {
-                    Plugin.Logger.LogDebug(d.TryGetValue(room.abstractRoom.name, out var r) ? r : "none");
-                    return d.TryGetValue(room.abstractRoom.name, out var id) && id == NTEnums.Iterator.ESP;
-                }
-                Plugin.Logger.LogDebug("Well this didn't work!!");
-                return val;
-            });
-
-            // Now revert the room correctly
-            c.GotoNext(MoveType.After, x => x.MatchLdstr("DD_AI"));
-            c.Emit(OpCodes.Ldarg_2);
-            c.EmitDelegate((string val, Room room) =>
-            {
-                if (Plugin.itercwt.TryGetValue(room.game.overWorld, out var d))
-                {
-                    return d.First(x => x.Value == NTEnums.Iterator.ESP).Key;
-                }
-                return val;
-            });
-        }*/
     }
 }
