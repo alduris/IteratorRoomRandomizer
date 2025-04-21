@@ -1,4 +1,5 @@
-﻿using System;
+﻿/*
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -24,11 +25,10 @@ namespace OracleRooms
             try
             {
                 var oracleDataMethods = typeof(CMOracleModule).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                    .Where(x => x.Name == nameof(CMOracleModule.GetOracleData)); // remove the Get after upcoming rewrite
+                    .Where(x => x.Name == nameof(CMOracleModule.OracleData));
                 mh.Add(new Hook(oracleDataMethods.First(x => x.GetParameters().Length == 1), CMOracleModule_OracleData_1param));
                 mh.Add(new Hook(oracleDataMethods.First(x => x.GetParameters().Length == 2), CMOracleModule_OracleData_2param));
 
-                // The following works because while this method is run in OnModsInit, the method this hooks is in PostModsInit so is run after
                 mhIL.Add(new ILHook(typeof(IteratorKit.IteratorKit).GetMethod("LoadOracleFiles", BindingFlags.NonPublic | BindingFlags.Instance), IteratorKit_LoadOracleFiles));
             }
             catch (Exception ex)
@@ -62,17 +62,12 @@ namespace OracleRooms
                 if (ikJData is null) return;
                 var jData = (List<OracleJData>) ikJData;
 
-                /*foreach (var list in jData)
+                foreach (var list in jData)
                 {
                     foreach (var data in list)
                     {
                         oracles.Add(data.id);
                     }
-                }*/
-                foreach (var data in jData)
-                {
-                    oracles.Add(data.id);
-                    Plugin.Logger.LogDebug("Found IK custom iter: " + data.id);
                 }
             }
             catch (Exception ex)
@@ -87,8 +82,7 @@ namespace OracleRooms
             try
             {
                 if (ikJData is null) return;
-                // TODO: uncomment after upcoming IK rewrite
-                /*var jData = (ITKMultiValueDictionary<string, OracleJData>)ikJData;
+                var jData = (ITKMultiValueDictionary<string, OracleJData>)ikJData;
 
                 // Save and clear out the old data
                 Dictionary<string, OracleJData> holder = [];
@@ -116,7 +110,7 @@ namespace OracleRooms
                             jData[pair.Key] = [holder[pair.Value.value]];
                         }
                     }
-                }*/
+                }
             }
             catch (Exception ex)
             {
@@ -130,8 +124,7 @@ namespace OracleRooms
             // This method doesn't change any of the code, it just steals a variable
             var c = new ILCursor(il);
 
-            // c.GotoNext(x => x.MatchStfld<IteratorKit.IteratorKit>(nameof(IteratorKit.IteratorKit.oracleJsons)));
-            c.GotoNext(x => x.MatchStfld<IteratorKit.IteratorKit>(nameof(IteratorKit.IteratorKit.oracleJsonData)));
+            c.GotoNext(x => x.MatchStfld<IteratorKit.IteratorKit>(nameof(IteratorKit.IteratorKit.oracleJsons)));
             c.EmitDelegate((List<OracleJData> data) =>
             {
                 ikJData = data;
@@ -139,11 +132,9 @@ namespace OracleRooms
             });
         }
 
-        // private static OracleJDataTilePos Vec2JData(Vector2 pos, Room room) => IntVec2JData(room.GetTilePosition(pos));
-        // private static OracleJDataTilePos IntVec2JData(IntVector2 pos) => new() { x = pos.x, y = pos.y };
-        private static OracleJsonTilePos Vec2JData(Vector2 pos, Room room) => IntVec2JData(room.GetTilePosition(pos));
-        private static OracleJsonTilePos IntVec2JData(IntVector2 pos) => new() { x = pos.x, y = pos.y };
-        private static CMOracleData CMOracleModule_OracleData_1param(Func<Oracle, CMOracleData> orig, Oracle oracle) // change this and the following to CMOracle
+        private static OracleJDataTilePos Vec2JData(Vector2 pos, Room room) => IntVec2JData(room.GetTilePosition(pos));
+        private static OracleJDataTilePos IntVec2JData(IntVector2 pos) => new() { x = pos.x, y = pos.y };
+        private static CMOracle CMOracleModule_OracleData_1param(Func<Oracle, CMOracle> orig, Oracle oracle) // change this and the following to CMOracle
         {
             var data = orig(oracle);
             var cornerPos = Util.GetCornerPositions(oracle);
@@ -161,8 +152,8 @@ namespace OracleRooms
             return data;
         }
 
-        delegate bool orig_CMOracleModule_OracleData_2param(Oracle oracle, out CMOracleData data);
-        private static bool CMOracleModule_OracleData_2param(orig_CMOracleModule_OracleData_2param orig, Oracle oracle, out CMOracleData data)
+        delegate bool orig_CMOracleModule_OracleData_2param(Oracle oracle, out CMOracle data);
+        private static bool CMOracleModule_OracleData_2param(orig_CMOracleModule_OracleData_2param orig, Oracle oracle, out CMOracle data)
         {
             var result = orig(oracle, out data);
 
@@ -185,3 +176,4 @@ namespace OracleRooms
         }
     }
 }
+*/

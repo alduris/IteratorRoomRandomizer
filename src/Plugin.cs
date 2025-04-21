@@ -106,7 +106,7 @@ sealed partial class Plugin : BaseUnityPlugin
             On.MoreSlugcats.STOracleBehavior.ctor += STOracleBehavior_ctor;
 
             // "Compatibility" (aggressive)
-            if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+            /*if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
             {
                 IteratorKitHooks.Apply();
             }
@@ -119,7 +119,7 @@ sealed partial class Plugin : BaseUnityPlugin
             if (ModManager.ActiveMods.Any(x => x.id.Equals("nyctophobia", StringComparison.InvariantCultureIgnoreCase)))
             {
                 NyctophobiaHooks.Apply();
-            }
+            }*/
 
             // Done!
             Logger.LogDebug("Finished applying hooks :)");
@@ -172,7 +172,7 @@ sealed partial class Plugin : BaseUnityPlugin
             On.MoreSlugcats.CLOracleBehavior.RandomRoomPoint -= CLOracleBehavior_RandomRoomPoint;
             On.MoreSlugcats.STOracleBehavior.ctor -= STOracleBehavior_ctor;
 
-            if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+            /*if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
             {
                 IteratorKitHooks.Unapply();
             }
@@ -185,7 +185,7 @@ sealed partial class Plugin : BaseUnityPlugin
             if (ModManager.ActiveMods.Any(x => x.id.Equals("nyctophobia", StringComparison.InvariantCultureIgnoreCase)))
             {
                 NyctophobiaHooks.Unapply();
-            }
+            }*/
         }
         catch (Exception e)
         {
@@ -257,10 +257,10 @@ sealed partial class Plugin : BaseUnityPlugin
                 List<string> slugcatRegions = SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Concat(SlugcatStats.SlugcatOptionalRegions(self.game.StoryCharacter)).ToList();
 
                 // Deal with stuff
-                if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+                /*if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     IteratorKitHooks.AddIterators(oracles);
-                }
+                }*/
                 if (ModManager.ActiveMods.Any(x => x.id.Equals("myr.chasing_wind", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     oracles.Add("CW");
@@ -295,10 +295,10 @@ sealed partial class Plugin : BaseUnityPlugin
                 }
                 itercwt.Add(self, rooms);
 
-                if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
+                /*if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
                 {
                     IteratorKitHooks.RearrangeIKData(rooms);
-                }
+                }*/
             }
         }
         catch (Exception e)
