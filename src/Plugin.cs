@@ -42,12 +42,15 @@ sealed partial class Plugin : BaseUnityPlugin
         if (init) return;
         init = true;
 
+        MachineConnector.SetRegisteredOI("alduris.oraclerooms", new Options());
+
         try
         {
             // Primary functionality
             IL.Room.ReadyForAI += Room_ReadyForAI;
             IL.Oracle.ctor += Oracle_ctor;
             On.OverWorld.ctor += OverWorld_ctor;
+            On.Menu.SlugcatSelectMenu.Update += SlugcatSelectMenu_Update;
 
             // Misc fixes
             On.SSOracleBehavior.LockShortcuts += SSOracleBehavior_LockShortcuts;
@@ -75,6 +78,7 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.SLOracleBehavior.Move += SLOracleBehavior_Move;
             IL.SLOracleBehavior.Update += SLOracleBehavior_Update;
             manualHooks.Add(new Hook(typeof(SLOracleBehavior).GetProperty(nameof(SLOracleBehavior.InSitPosition)).GetGetMethod(), SLOracleBehavior_InSitPosition));
+            IL.SLOracleBehaviorHasMark.Update += SLOracleBehaviorHasMark_Update;
 
             On.SSOracleBehavior.BasePosScore += SSOracleBehavior_BasePosScore;
             IL.SSOracleBehavior.Move += SSOracleBehavior_Move;
@@ -145,6 +149,7 @@ sealed partial class Plugin : BaseUnityPlugin
             IL.Room.ReadyForAI -= Room_ReadyForAI;
             IL.Oracle.ctor -= Oracle_ctor;
             On.OverWorld.ctor -= OverWorld_ctor;
+            On.Menu.SlugcatSelectMenu.Update -= SlugcatSelectMenu_Update;
 
             On.SSOracleBehavior.LockShortcuts -= SSOracleBehavior_LockShortcuts;
             IL.PebblesPearl.Update -= PebblesPearl_Update;
@@ -153,6 +158,7 @@ sealed partial class Plugin : BaseUnityPlugin
             On.MoreSlugcats.SpearMasterPearl.NewRoom -= SpearMasterPearl_NewRoom;
             IL.Oracle.ctor -= Oracle_ctor1;
             On.Oracle.ctor -= Oracle_ctor2;
+            IL.SLOracleBehaviorHasMark.Update -= SLOracleBehaviorHasMark_Update;
 
             IL.SLOracleWakeUpProcedure.Update -= SLOracleWakeUpProcedure_Update;
 
@@ -244,13 +250,15 @@ sealed partial class Plugin : BaseUnityPlugin
         c.Emit(OpCodes.And);
     }
 
+    private bool needsToSwap = true;
     private void OverWorld_ctor(On.OverWorld.orig_ctor orig, OverWorld self, RainWorldGame game)
     {
         orig(self, game);
         try
         {
-            if (game.IsStorySession)
+            if (game.IsStorySession && needsToSwap)
             {
+                if (Options.RandomModeConfig.Value != Options.RandomMode.EveryCycle) needsToSwap = false;
                 var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
                 Dictionary<string, Oracle.OracleID> rooms = [];
                 HashSet<string> oracles = [.. Oracle.OracleID.values.entries];
@@ -305,6 +313,12 @@ sealed partial class Plugin : BaseUnityPlugin
         {
             Logger.LogError(e);
         }
+    }
+
+    private void SlugcatSelectMenu_Update(On.Menu.SlugcatSelectMenu.orig_Update orig, Menu.SlugcatSelectMenu self)
+    {
+        orig(self);
+        if (Options.RandomModeConfig?.Value == Options.RandomMode.OnContinue) needsToSwap = true;
     }
 
 }

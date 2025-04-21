@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Mono.Cecil.Cil;
@@ -121,6 +120,41 @@ namespace OracleRooms
             c.GotoNext(MoveType.After, x => x.MatchLdcR4(1160f));
             c.Emit(OpCodes.Ldarg_0);
             c.EmitDelegate((float old, SLOracleBehavior self) => self.oracle.arm.cornerPositions[0].x);
+        }
+
+        private void SLOracleBehaviorHasMark_Update(ILContext il)
+        {
+            var c = new ILCursor(il);
+
+            // Player leave
+            {
+                ILLabel brIf = null;
+                ILLabel brElse = null;
+                c.GotoNext(x => x.MatchLdcR4(1016f));
+                c.GotoNext(MoveType.After, x => x.MatchBgeUn(out brIf));
+                brElse = c.MarkLabel();
+                c.GotoPrev(MoveType.Before, x => x.MatchLdarg(0), x => x.MatchLdfld<OracleBehavior>(nameof(OracleBehavior.player)));
+
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SLOracleBehaviorHasMark self) => Vector2.Distance(self.oracle.firstChunk.pos, self.player.DangerPos) < 1020f);
+                c.Emit(OpCodes.Brtrue, brIf);
+                c.Emit(OpCodes.Br, brElse);
+            }
+
+            // Player return
+            {
+                ILLabel brIf = null;
+                ILLabel brElse = null;
+                c.GotoNext(x => x.MatchLdcR4(1036f));
+                c.GotoNext(MoveType.After, x => x.MatchBgt(out brIf));
+                brElse = c.MarkLabel();
+                c.GotoPrev(MoveType.Before, x => x.MatchLdarg(0), x => x.MatchLdfld<OracleBehavior>(nameof(OracleBehavior.player)));
+
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate((SLOracleBehaviorHasMark self) => Vector2.Distance(self.oracle.firstChunk.pos, self.player.DangerPos) < 1000f);
+                c.Emit(OpCodes.Brtrue, brIf);
+                c.Emit(OpCodes.Br, brElse);
+            }
         }
 
         #endregion moon
