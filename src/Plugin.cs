@@ -11,6 +11,7 @@ using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MoreSlugcats;
 using UnityEngine;
+using Watcher;
 using Random = UnityEngine.Random;
 
 // Allows access to private members
@@ -262,7 +263,7 @@ sealed partial class Plugin : BaseUnityPlugin
                 var roomList = RainWorld.roomNameToIndex.Keys.ToArray();
                 Dictionary<string, Oracle.OracleID> rooms = [];
                 HashSet<string> oracles = [.. Oracle.OracleID.values.entries];
-                List<string> slugcatRegions = SlugcatStats.SlugcatStoryRegions(self.game.StoryCharacter).Concat(SlugcatStats.SlugcatOptionalRegions(self.game.StoryCharacter)).ToList();
+                List<string> slugcatRegions = GetSlugcatRegions(self.game.StoryCharacter);
 
                 // Deal with stuff
                 /*if (ModManager.ActiveMods.Any(x => x.id.Equals("iteratorkit", StringComparison.InvariantCultureIgnoreCase)))
@@ -312,6 +313,20 @@ sealed partial class Plugin : BaseUnityPlugin
         catch (Exception e)
         {
             Logger.LogError(e);
+        }
+
+        static List<string> GetSlugcatRegions(SlugcatStats.Name storyCharacter)
+        {
+            if (ModManager.Watcher && storyCharacter == WatcherEnums.SlugcatStatsName.Watcher)
+            {
+                return [
+                    "WBLA", "WPTA", "WRRA", "WVWA",
+                    "WTDA", "WTDB", "WRFA", "WRFB", "WSKA", "WSKB", "WSKC", "WSKD",
+                    "WARA", "WARB", "WARC", "WARD", "WARE", "WARF", "WARG",
+                    "WAUA", "WRSA",
+                    "WSSR", "WSUR", "WHIR", "WDSR", "WGWR", "WORA"];
+            }
+            return [.. SlugcatStats.SlugcatStoryRegions(storyCharacter).Union(SlugcatStats.SlugcatOptionalRegions(storyCharacter))];
         }
     }
 
