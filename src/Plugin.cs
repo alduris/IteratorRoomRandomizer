@@ -21,7 +21,7 @@ using Random = UnityEngine.Random;
 
 namespace OracleRooms;
 
-[BepInPlugin("alduris.oraclerooms", "Iterator Room Randomizer", "1.1.0")]
+[BepInPlugin("alduris.oraclerooms", "Iterator Room Randomizer", "1.2.0")]
 sealed partial class Plugin : BaseUnityPlugin
 {
     bool init;

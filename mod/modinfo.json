@@ -1,10 +1,10 @@
 ﻿{
   "id": "alduris.oraclerooms",
   "name": "Iterator Room Randomizer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "authors": "Alduris",
   "description": "Randomizes the rooms iterators spawn in every cycle.",
-  "tags": [],
+  "tags": ["Base", "Downpour", "Watcher", "Randomizer", "Game Mechanics"],
   "requirements": [],
   "requirements_names": [],
   "checksum_override_version": false
